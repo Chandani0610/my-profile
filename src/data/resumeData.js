@@ -1,34 +1,142 @@
 const resumeData = {
   name: "Chandani Kumari",
+
   role: "Frontend Developer",
-  about: "I'm a motivated and quick learner, always eager to take on new challenges and opportunities to grow in the tech industry. Passionate about crafting user-friendly interfaces.",
+
+  about:
+    "Computer Science Graduate with hands-on experience in React.js, Node.js, Express.js, MySQL, and JavaScript. Seeking Software Developer and Full Stack Developer opportunities.",
+
   education: [
-    { degree: "B-Tech", college: "IES College of Technology", marks: "8.30 CGPA" },
-    { degree: "12th", college: "JN College Madhubani", marks: "71.2%" },
-    { degree: "10th", college: "Bilat Singh Girls School khajauli, Madhubani", marks: "71.4%" }
+    {
+      degree: "B.Tech",
+      college: "IES College of Technology",
+      marks: "8.36 CGPA",
+      year: "June 2026 - Completed"
+    },
+    {
+      degree: "12th",
+      college: "JN College Madhubani",
+      marks: "71.2%",
+      year: "2021 - 2022"
+    },
+    {
+      degree: "10th",
+      college: "Bilat Singh Girls School Khajauli",
+      marks: "71.4%",
+      year: "2019 - Jan 2020"
+    }
   ],
+
   skills: {
-    frontend: ["HTML5", "CSS3 / Tailwind", "JavaScript", "React.js"],
-    backend: ["Java", "SQL / MySQL", "Advanced Java"],
-    tools: ["Data Structures", "Git", "Problem Solving"],
-    coding: ["C", "C++", "Java"]
-    
+    languages: [
+      "C",
+      "C++",
+      "Core Java",
+      "JavaScript",
+      "SQL"
+    ],
+
+    frontend: [
+      "HTML",
+      "CSS",
+      "React.js",
+      "Tailwind CSS",
+      "Material Tailwind"
+    ],
+
+    backend: [
+      "Node.js",
+      "Express.js",
+      "REST APIs"
+    ],
+
+    database: [
+      "MySQL",
+      "Oracle SQL"
+    ],
+
+    tools: [
+      "Git",
+      "GitHub",
+      "VS Code",
+      "Postman"
+    ],
+
+    coreSubjects: [
+      "Data Structures & Algorithms",
+      "DBMS",
+      "OOP",
+      "Operating Systems",
+      "Computer Networks",
+      "Cloud Computing"
+    ]
   },
+
   projects: [
-    { title: "Fee Management System", icon: "💰", tech: "HTML/CSS/JS + MySQL + Advanced Java", github: "#", demo: "#" },
-    { title: "Smart Mirror", icon: "🪞", tech: "HTML, CSS, interactive widgets", github: "#", demo: "#" },
-    { title: "Portfolio Website", icon: "✨", tech: "React + Tailwind, dynamic wave UI", github: "#", demo: "#" }
+    {
+      title: "Vedant Devotions",
+      icon: "🙏",
+      tech: "React.js + Tailwind CSS",
+      description:
+        "Developed a responsive devotional website using reusable React components and Tailwind CSS.",
+      github: "#",
+      demo: "#"
+    },
+
+    {
+      title: "Kahaniland",
+      icon: "📖",
+      tech: "React.js + Node.js + MySQL + Tailwind CSS",
+      description:
+        "Developed a full-stack storytelling platform with user authentication, RESTful APIs, and MySQL database integration.",
+      github: "#",
+      demo: "#"
+    },
+
+    {
+      title: "Fee Management System",
+      icon: "💰",
+      tech: "React.js + Tailwind CSS + MySQL",
+      description:
+        "Developed a responsive web application for managing student fee records with add, update, search, and record management features.",
+      github: "#",
+      demo: "#"
+    }
   ],
-  hobbies: ["Painting", "Listening to Music","Badminton", "Problem Solving / DSA"],
+
+  hobbies: [
+    "Painting",
+    "Listening to Music"
+  ],
+
   languages: [
-    { name: "English", flag: "🇬🇧", level: "Fluent" },
-    { name: "Hindi", flag: "🇮🇳", level: "Native" },
-    { name: "Maithili", flag: "🧡", level: "Mother tongue" }
+    {
+      name: "English",
+      flag: "🇬🇧",
+      level: "Fluent"
+    },
+    {
+      name: "Hindi",
+      flag: "🇮🇳",
+      level: "Native"
+    },
+    {
+      name: "Maithili",
+      flag: "🧡",
+      level: "Mother Tongue"
+    }
   ],
-  certifications: ["DBMS - NPTEL","Problem solving through C programming - NPTEL", "Cloud Computing - NPTEL", "HackerRank (Problem Solving)"],
+
+  certifications: [
+    "NPTEL – Database Management System (DBMS)",
+    "NPTEL – Cloud Computing",
+    "HackerRank – Problem Solving (C Programming)"
+  ],
+
   contact: {
     email: "kumarichandanipali@gmail.com",
-    linkedin: "https://www.linkedin.com/in/chandani-kumari-781136261/",
+    linkedin:
+      "https://www.linkedin.com/in/chandani-kumari-781136261/",
     location: "Madhubani, Bihar",
     phone: "+91 7987053391"
   }

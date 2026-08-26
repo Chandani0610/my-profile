@@ -1,294 +1,440 @@
 import { useEffect } from "react";
 import resumeData from "../data/resumeData";
+import { useTheme } from "../context/ThemeContext";
 
 export default function Resume() {
+  // Safely use theme with fallback
+  let themeColors;
+  try {
+    const theme = useTheme();
+    themeColors = theme.themeColors;
+  } catch {
+    themeColors = {
+      primary: '#08bde0',
+      primaryDark: '#07a8c9',
+      primaryLight: '#e8f4f8',
+      accent: '#48e39a',
+      accentDark: '#32d789',
+      text: '#10243e',
+      textSecondary: '#7c8997',
+      border: '#e9eef2',
+      cardBg: '#ffffff',
+      cardBorder: '#e7edf1',
+      background: '#f8fafb',
+      sectionBg: '#ffffff',
+      shadow: 'rgba(16,36,62,0.08)',
+      shadowHover: 'rgba(16,36,62,0.12)',
+      gradient: 'linear-gradient(135deg, #08bde0, #07a8c9)',
+    };
+  }
+
   useEffect(() => {
-    // Re-apply any necessary effects after component mounts
     const handleScroll = () => {
       const nav = document.querySelector("nav");
       if (nav && window.scrollY > 50) {
-        nav.style.background = "rgba(219, 234, 254, 0.95)";
+        nav.style.background = `${themeColors.cardBg}DD`;
       } else if (nav) {
-        nav.style.background = "rgba(219, 234, 254, 0.9)";
+        nav.style.background = `${themeColors.cardBg}CC`;
       }
     };
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
+  }, [themeColors.cardBg]);
 
   return (
     <>
-      {/* Desktop Navigation */}
-      <nav id="desktop-nav">
-        <div className="logo">Chandani<span>.</span></div>
-        <div>
-          <ul className="nav-links">
-            <li><a href="#about">About</a></li>
-            <li><a href="#experience">Tech Stack</a></li>
-            <li><a href="#projects">Projects</a></li>
-            <li><a href="#contact">Contact</a></li>
-          </ul>
-        </div>
-      </nav>
+      <style>{`
+        /* ===== RESUME STYLES ===== */
+        .resume-section {
+          padding: 80px 20px;
+          max-width: 1000px;
+          margin: 0 auto;
+        }
+        .resume-title {
+          font-size: 2.5rem;
+          font-weight: 700;
+          color: ${themeColors.text}DD;
+          margin-bottom: 8px;
+          letter-spacing: -1px;
+        }
+        .resume-subtitle {
+          color: ${themeColors.primary}CC;
+          font-size: 0.85rem;
+          text-transform: uppercase;
+          letter-spacing: 2px;
+          margin-bottom: 4px;
+        }
+        .resume-card {
+          background: ${themeColors.cardBg};
+          border: 1px solid ${themeColors.border};
+          border-radius: 16px;
+          padding: 24px 28px;
+          margin-bottom: 16px;
+          transition: all 0.3s ease;
+          box-shadow: 0 4px 15px ${themeColors.shadow};
+        }
+        .resume-card:hover {
+          transform: translateY(-3px);
+          box-shadow: 0 12px 35px ${themeColors.shadowHover};
+          border-color: ${themeColors.primary}50;
+        }
+        .resume-label {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          font-size: 1.1rem;
+          font-weight: 600;
+          color: ${themeColors.text}DD;
+          margin-bottom: 12px;
+        }
+        .resume-label span {
+          font-size: 1.4rem;
+        }
+        .resume-content {
+          color: ${themeColors.textSecondary}BB;
+          font-size: 0.95rem;
+          line-height: 1.7;
+        }
+        .resume-badge {
+          display: inline-block;
+          background: ${themeColors.primary}15;
+          color: ${themeColors.primary}CC;
+          border: 1px solid ${themeColors.primary}30;
+          border-radius: 20px;
+          padding: 4px 14px;
+          font-size: 0.8rem;
+          font-weight: 500;
+          margin: 3px 4px 3px 0;
+          transition: all 0.2s ease;
+        }
+        .resume-badge:hover {
+          background: ${themeColors.primary}25;
+          transform: scale(1.05);
+        }
+        .resume-btn {
+          background: ${themeColors.primary};
+          color: white;
+          border: none;
+          padding: 10px 24px;
+          border-radius: 30px;
+          font-size: 0.85rem;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.3s ease;
+          box-shadow: 0 4px 15px ${themeColors.primary}30;
+        }
+        .resume-btn:hover {
+          background: ${themeColors.primaryDark};
+          transform: translateY(-2px);
+          box-shadow: 0 8px 25px ${themeColors.primary}40;
+        }
+        .resume-btn-outline {
+          background: transparent;
+          color: ${themeColors.primary}CC;
+          border: 2px solid ${themeColors.primary}40;
+          padding: 8px 22px;
+          border-radius: 30px;
+          font-size: 0.85rem;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.3s ease;
+        }
+        .resume-btn-outline:hover {
+          background: ${themeColors.primary};
+          color: white;
+          transform: translateY(-2px);
+          border-color: ${themeColors.primary};
+        }
+        .resume-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 16px;
+        }
+        @media (max-width: 768px) {
+          .resume-grid {
+            grid-template-columns: 1fr;
+          }
+          .resume-title {
+            font-size: 2rem;
+          }
+        }
+        .resume-social-icon {
+          width: 40px;
+          height: 40px;
+          border-radius: 50%;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          background: ${themeColors.primary}10;
+          border: 1px solid ${themeColors.primary}20;
+          transition: all 0.3s ease;
+          cursor: pointer;
+          font-size: 1.2rem;
+          color: ${themeColors.textSecondary}BB;
+        }
+        .resume-social-icon:hover {
+          background: ${themeColors.primary}20;
+          transform: translateY(-3px);
+          color: ${themeColors.primary}CC;
+          border-color: ${themeColors.primary}40;
+        }
+        .resume-container {
+          background: ${themeColors.background};
+          color: ${themeColors.text};
+        }
+      `}</style>
 
-      {/* Hamburger Navigation */}
-      <nav id="hamburger-nav">
-        <div className="logo">Chandani<span>.</span></div>
-        <div className="hamburger-menu">
-          <div className="hamburger-icon" onClick={toggleMenu}>
-            <span></span>
-            <span></span>
-            <span></span>
-          </div>
-          <div className="menu-links">
-            <li><a href="#about" onClick={toggleMenu}>About</a></li>
-            <li><a href="#experience" onClick={toggleMenu}>Tech Stack</a></li>
-            <li><a href="#projects" onClick={toggleMenu}>Projects</a></li>
-            <li><a href="#contact" onClick={toggleMenu}>Contact</a></li>
-          </div>
-        </div>
-      </nav>
-
-      {/* PROFILE SECTION */}
-      <section id="profile">
-        <div className="section__pic-container">
-          <img
-            src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='45' fill='%233b82f6'/%3E%3Ctext x='50' y='67' text-anchor='middle' fill='white' font-size='40' dy='.3em'%3ECK%3C/text%3E%3C/svg%3E"
-            alt="Chandani profile"
-          />
-        </div>
-        <div className="section__text">
-          <p className="section__text__p1">Hello, I'm</p>
-          <h1 className="title">{resumeData.name}</h1>
-          <p className="section__text__p2">{resumeData.role}</p>
-          <div className="btn-container">
-            <button className="btn btn-color-2" onClick={() => alert('📄 Resume preview: Chandani Kumari - Frontend Developer')}>
-              Download CV
-            </button>
-            <button className="btn btn-color-1" onClick={() => document.getElementById('contact')?.scrollIntoView({ behavior: 'smooth' })}>
-              Contact Info
-            </button>
-          </div>
-          <div id="socials-container">
-            <img
-              src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%231e4a8a'%3E%3Cpath d='M22.23 0H1.77C0.79 0 0 0.78 0 1.77v20.46C0 23.22 0.79 24 1.77 24h20.46c0.98 0 1.77-0.78 1.77-1.77V1.77C24 0.78 23.21 0 22.23 0zM7.08 20.31H3.55V8.97h3.53v11.34zM5.31 7.48c-1.13 0-2.05-0.92-2.05-2.05s0.92-2.05 2.05-2.05 2.05 0.92 2.05 2.05-0.92 2.05-2.05 2.05zM20.31 20.31h-3.53v-5.65c0-1.35-0.48-2.28-1.68-2.28-0.92 0-1.46 0.62-1.7 1.22-0.09 0.21-0.11 0.51-0.11 0.81v5.9h-3.53V8.97h3.53v1.56c0.47-0.73 1.31-1.77 3.19-1.77 2.33 0 4.08 1.52 4.08 4.79v6.76z'/%3E%3C/svg%3E"
-              alt="LinkedIn"
-              className="icon"
-              onClick={() => window.open('https://linkedin.com')}
-            />
-            <img
-              src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%231e4a8a'%3E%3Cpath d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22 0.03-1.99 4-3.08 6-3.08s5.97 1.09 6 3.08c-1.29 1.94-3.5 3.22-6 3.22z'/%3E%3C/svg%3E"
-              alt="GitHub"
-              className="icon"
-              onClick={() => window.open('https://github.com')}
-            />
-          </div>
-        </div>
-      </section>
-
-      {/* ABOUT SECTION */}
-      <section id="about">
-        <p className="section__text__p1" style={{ backgroundColor: "white" }}>Get To Know More</p>
-        <h1 className="title" style={{ backgroundColor: "white" }}>About Section</h1>
-      </section>
-      <section className="about-subsection">
-        <div className="line-item">
-          <div className="line-label"><span>📖</span> About Me</div>
-          <div className="line-content">{resumeData.about}</div>
-        </div>
-      </section>
-      {/* EDUCATION SECTION */}
-
-      <section id="education">
-        <p className="section__text__p1" style={{ backgroundColor: "white" }}>My Background</p>
-        <h1 className="title" style={{ backgroundColor: "white" }}>Education & More</h1>
-      </section>
-
-      <section className="education-subsection">
-        <div className="line-item">
-          <div className="line-label"><span>🎓</span> Education</div>
-          <div className="line-content">
-            <strong>B-Tech</strong> (IES College of Technology) — CGPA: 8.30 &nbsp;|&nbsp;
-            <strong> 12th </strong> (JN College Madhubani,Bihar) — 71.2% &nbsp;|&nbsp;
-            <strong>10th</strong> (Bilat Singh Girls school Khajauli , Madhubani,Bihar) — 71.4%
-          </div>
-        </div>
-      </section>
-      {/*Certifications*/}
-      <section>
-        <div className="line-item">
-          <div className="line-label"><span>🏅</span> Certifications</div>
-          <div className="line-content">
-            {resumeData.certifications.map((cert, idx) => (
-              <span key={idx}>✔️ {cert} &nbsp;</span>
-            ))}
-          </div>
-        </div>
-      </section>
-      {/* HOBBIES  */}
-      <section id="hobbies">
-        <p className="section__text__p1" style={{ backgroundColor: "white" }}>Beyond Coding</p>
-        <h1 className="title" style={{ backgroundColor: "white" }}>  Hobbies & Languages</h1>
-        <div className="line-item">
-          <div className="line-label"><span>🎨</span> Hobbies</div>
-          <div className="line-content">
-            {resumeData.hobbies.map((hobby, idx) => (
-              <span key={idx}>{idx === 0 ? "🎨" : idx === 1 ? "🎧" : "🧩"} {hobby} &nbsp;</span>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* LANGUAGES */}
-      <section id="languages">
-        <div className="line-item">
-          <div className="line-label"><span>🌐</span> Languages</div>
-          <div className="line-content">
-            {resumeData.languages.map((lang, idx) => (
-              <span key={idx}>{lang.flag} {lang.name} ({lang.level}) &nbsp;</span>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* TECH STACK SECTION */}
-      <section id="experience">
-        <p className="section__text__p1" style={{ backgroundColor: "white" }}>Explore My</p>
-        <h1 className="title" style={{ backgroundColor: "white" }}>Tech Stack</h1>
-      </section>
-      <section className="skills-subsection">
-        <div className="line-item">
-          <div className="line-label"><span>⚙️</span> Frontend</div>
-          <div className="line-content">
-            {resumeData.skills.frontend.map((skill, idx) => (
-              <span key={idx} className="skill-badge">{skill}</span>
-            ))}
-          </div>
-        </div>
-      </section>
-      <section className="skills-subsection">
-        <div className="line-item">
-          <div className="line-label"><span>🗄️</span> Backend & DB</div>
-          <div className="line-content">
-            {resumeData.skills.backend.map((skill, idx) => (
-              <span key={idx} className="skill-badge">{skill}</span>
-            ))}
-          </div>
-        </div>
-      </section>
-      <section className="skills-subsection">
-        <div className="line-item">
-          <div className="line-label"><span>🧠</span> DSA & Tools</div>
-          <div className="line-content">
-            {resumeData.skills.tools.map((skill, idx) => (
-              <span key={idx} className="skill-badge">{skill}</span>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* PROJECTS SECTION */}
-      <section id="projects">
-        <p className="section__text__p1" style={{ backgroundColor: "white" }}>Browse My Recent</p>
-        <h1 className="title" style={{ backgroundColor: "white" }}>Projects</h1>
-      </section>
-      <section className="projects-subsection">
-        {resumeData.projects.map((project, idx) => (
-          <div className="line-item" key={idx}>
-            <div className="line-label"><span>{project.icon}</span> {project.title}</div>
-            <div className="line-content">
-              <span className="project-inline">{project.tech}</span>
-              <div className="btn-container" style={{ margin: 0, gap: "0.5rem" }}>
-                <button 
-                  className="btn btn-color-2 project-btn" 
-                  style={{ padding: "0.3rem 1rem", fontSize: "0.8rem" }}
-                  onClick={() => window.open(project.github)}
-                >
-                  GitHub
+      <div className="resume-container">
+        {/* ===== PROFILE SECTION ===== */}
+        <section id="profile" className="resume-section" style={{ paddingTop: '120px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '48px', flexWrap: 'wrap', justifyContent: 'center' }}>
+            <div style={{ flexShrink: 0 }}>
+              <div style={{
+                width: '200px',
+                height: '200px',
+                borderRadius: '50%',
+                background: `linear-gradient(135deg, ${themeColors.primary}, ${themeColors.primaryDark})`,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '4rem',
+                fontWeight: '700',
+                color: 'white',
+                boxShadow: `0 20px 60px ${themeColors.primary}30`
+              }}>
+                {resumeData.name?.split(' ').map(n => n[0]).join('') || 'CK'}
+              </div>
+            </div>
+            <div style={{ textAlign: 'left' }}>
+              <p style={{ color: `${themeColors.textSecondary}BB`, fontSize: '1.1rem' }}>Hello, I'm</p>
+              <h1 className="resume-title">{resumeData.name}</h1>
+              <p style={{ color: `${themeColors.primary}CC`, fontSize: '1.2rem', fontWeight: 500 }}>{resumeData.role || 'Frontend Developer'}</p>
+              <div style={{ display: 'flex', gap: '12px', marginTop: '20px', flexWrap: 'wrap' }}>
+                <button className="resume-btn" onClick={() => alert('📄 Resume preview: ' + resumeData.name)}>
+                  Download CV
                 </button>
-                <button 
-                  className="btn btn-color-2 project-btn" 
-                  style={{ padding: "0.3rem 1rem", fontSize: "0.8rem" }}
-                  onClick={() => alert(`${project.title} - Live demo preview`)}
-                >
-                  Live Demo
+                <button className="resume-btn-outline" onClick={() => document.getElementById('contact')?.scrollIntoView({ behavior: 'smooth' })}>
+                  Contact Info
                 </button>
+              </div>
+              <div style={{ display: 'flex', gap: '12px', marginTop: '16px' }}>
+                <a href={resumeData.contact.linkedin} target="_blank" rel="noreferrer" className="resume-social-icon">
+                  💼
+                </a>
+                <a href="https://github.com" target="_blank" rel="noreferrer" className="resume-social-icon">
+                  🔗
+                </a>
+                <a href={`mailto:${resumeData.contact.email}`} className="resume-social-icon">
+                  📧
+                </a>
               </div>
             </div>
           </div>
-        ))}
-      </section>
+        </section>
 
-      {/* CONTACT SECTION */}
-      <section id="contact">
-        <p className="section__text__p1" style={{ backgroundColor: "white" }}>Get in Touch</p>
-        <h1 className="title" style={{ backgroundColor: "white" }}>Contact Me</h1>
-      </section>
+        {/* ===== ABOUT SECTION ===== */}
+        <section id="about" className="resume-section">
+          <p className="resume-subtitle">Get To Know More</p>
+          <h2 className="resume-title">About Me</h2>
+          <div className="resume-card">
+            <div className="resume-label"><span>📖</span> About Me</div>
+            <div className="resume-content">{resumeData.about}</div>
+          </div>
+        </section>
 
-      <section className="contact-subsection">
-        <div className="contact-row">
-          <div className="contact-info-container" style={{ display: "flex", alignItems: "center", gap: "0.7rem" }}>
-            <img
-              src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='%231e4a8a' viewBox='0 0 24 24' width='28' height='28'%3E%3Cpath d='M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z'/%3E%3C/svg%3E"
-              className="icon contact-icon"
-              alt="email"
-              style={{ height: "1.8rem" }}
-            />
-            <p><a href={`mailto:${resumeData.contact.email}`} style={{ color: "#1e4a8a", textDecoration: "none" }}>{resumeData.contact.email}</a></p>
+        {/* ===== EDUCATION SECTION ===== */}
+        <section id="education" className="resume-section">
+          <p className="resume-subtitle">My Background</p>
+          <h2 className="resume-title">Education & More</h2>
+          <div className="resume-card">
+            <div className="resume-label"><span>🎓</span> Education</div>
+            <div className="resume-content">
+              {resumeData.education.map((item, idx) => (
+                <div key={idx} style={{ marginBottom: idx < resumeData.education.length - 1 ? '12px' : '0' }}>
+                  <strong style={{ color: `${themeColors.text}DD` }}>{item.degree}</strong>
+                  <span style={{ color: `${themeColors.textSecondary}BB` }}> — {item.college}</span>
+                  <br />
+                  <span style={{ color: `${themeColors.primary}CC`, fontSize: '0.9rem' }}>{item.marks}</span>
+                  <span style={{ color: `${themeColors.textSecondary}BB`, fontSize: '0.85rem', marginLeft: '8px' }}>| {item.year}</span>
+                </div>
+              ))}
+            </div>
           </div>
-          <div className="contact-info-container" style={{ display: "flex", alignItems: "center", gap: "0.7rem" }}>
-            <img
-              src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='%231e4a8a' viewBox='0 0 24 24' width='28' height='28'%3E%3Cpath d='M22.23 0H1.77C0.79 0 0 0.78 0 1.77v20.46C0 23.22 0.79 24 1.77 24h20.46c0.98 0 1.77-0.78 1.77-1.77V1.77C24 0.78 23.21 0 22.23 0zM7.08 20.31H3.55V8.97h3.53v11.34zM5.31 7.48c-1.13 0-2.05-0.92-2.05-2.05s0.92-2.05 2.05-2.05 2.05 0.92 2.05 2.05-0.92 2.05-2.05 2.05zM20.31 20.31h-3.53v-5.65c0-1.35-0.48-2.28-1.68-2.28-0.92 0-1.46 0.62-1.7 1.22-0.09 0.21-0.11 0.51-0.11 0.81v5.9h-3.53V8.97h3.53v1.56c0.47-0.73 1.31-1.77 3.19-1.77 2.33 0 4.08 1.52 4.08 4.79v6.76z'/%3E%3C/svg%3E"
-              className="icon contact-icon"
-              alt="linkedin"
-              style={{ height: "1.8rem" }}
-            />
-            <p><a href={resumeData.contact.linkedin} style={{ color: "#1e4a8a", textDecoration: "none" }}>LinkedIn</a></p>
-          </div>
-          <div className="contact-info-container" style={{ display: "flex", alignItems: "center", gap: "0.7rem" }}>
-            <img
-              src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='%231e4a8a' viewBox='0 0 24 24' width='28' height='28'%3E%3Cpath d='M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z'/%3E%3C/svg%3E"
-              className="icon contact-icon"
-              alt="location"
-              style={{ height: "1.8rem" }}
-            />
-            <p>{resumeData.contact.location}</p>
-          </div>
-          <div className="contact-info-container" style={{ display: "flex", alignItems: "center", gap: "0.7rem" }}>
-            <img
-              src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='%231e4a8a' viewBox='0 0 24 24' width='28' height='28'%3E%3Cpath d='M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z'/%3E%3C/svg%3E"
-              className="icon contact-icon"
-              alt="phone"
-              style={{ height: "1.8rem" }}
-            />
-            <p>{resumeData.contact.phone}</p>
-          </div>
-        </div>
-      </section>
+        </section>
 
-      <footer>
-        <nav>
-          <div className="nav-links-container">
-            <ul className="nav-links">
-              <li><a href="#about">About</a></li>
-              <li><a href="#experience">Tech Stack</a></li>
-              <li><a href="#projects">Projects</a></li>
-              <li><a href="#contact">Contact</a></li>
-            </ul>
+        {/* ===== CERTIFICATIONS ===== */}
+        <section className="resume-section" style={{ paddingTop: '0' }}>
+          <div className="resume-card">
+            <div className="resume-label"><span>🏅</span> Certifications</div>
+            <div className="resume-content">
+              {resumeData.certifications.map((cert, idx) => (
+                <span key={idx} className="resume-badge">✔ {cert}</span>
+              ))}
+            </div>
           </div>
-        </nav>
-        <p>2026 Chandani Kumari. All Rights Reserved.</p>
-      </footer>
+        </section>
+
+        {/* ===== HOBBIES ===== */}
+        <section id="hobbies" className="resume-section" style={{ paddingTop: '0' }}>
+          <div className="resume-card">
+            <div className="resume-label"><span>🎨</span> Hobbies</div>
+            <div className="resume-content">
+              {resumeData.hobbies.map((hobby, idx) => (
+                <span key={idx} className="resume-badge">
+                  {['🎨', '🎧', '🧩'][idx % 3]} {hobby}
+                </span>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ===== LANGUAGES ===== */}
+        <section id="languages" className="resume-section" style={{ paddingTop: '0' }}>
+          <div className="resume-card">
+            <div className="resume-label"><span>🌐</span> Languages</div>
+            <div className="resume-content">
+              {resumeData.languages.map((lang, idx) => (
+                <span key={idx} className="resume-badge">
+                  {lang.flag} {lang.name} ({lang.level})
+                </span>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ===== TECH STACK ===== */}
+        <section id="experience" className="resume-section">
+          <p className="resume-subtitle">Explore My</p>
+          <h2 className="resume-title">Tech Stack</h2>
+          <div className="resume-grid">
+            {Object.entries(resumeData.skills).map(([category, items]) => (
+              <div key={category} className="resume-card" style={{ marginBottom: '0' }}>
+                <div className="resume-label">
+                  <span>
+                    {category === 'languages' && '💻'}
+                    {category === 'frontend' && '🎨'}
+                    {category === 'backend' && '⚙️'}
+                    {category === 'database' && '🗄️'}
+                    {category === 'tools' && '🛠️'}
+                    {category === 'coreSubjects' && '📚'}
+                  </span>
+                  {category === 'coreSubjects' ? 'Core Subjects' : category}
+                </div>
+                <div className="resume-content">
+                  {items.map((skill, idx) => (
+                    <span key={idx} className="resume-badge">{skill}</span>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* ===== PROJECTS ===== */}
+        <section id="projects" className="resume-section">
+          <p className="resume-subtitle">Browse My Recent</p>
+          <h2 className="resume-title">Projects</h2>
+          {resumeData.projects.map((project, idx) => (
+            <div key={idx} className="resume-card">
+              <div className="resume-label">
+                <span>{project.icon}</span>
+                {project.title}
+                <span style={{ 
+                  marginLeft: 'auto', 
+                  fontSize: '0.7rem',
+                  background: `${themeColors.primary}15`,
+                  color: `${themeColors.primary}CC`,
+                  padding: '2px 12px',
+                  borderRadius: '12px',
+                  border: `1px solid ${themeColors.primary}30`
+                }}>
+                  Featured
+                </span>
+              </div>
+              <div className="resume-content">
+                <div style={{ marginBottom: '8px' }}>
+                  {project.tech.split(' + ').map((tech, i) => (
+                    <span key={i} className="resume-badge">{tech}</span>
+                  ))}
+                </div>
+                <p style={{ marginBottom: '12px', color: `${themeColors.textSecondary}BB` }}>{project.description}</p>
+                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                  <button className="resume-btn" style={{ padding: '6px 18px', fontSize: '0.8rem' }}
+                    onClick={() => project.github !== '#' ? window.open(project.github, '_blank') : alert('GitHub link coming soon')}>
+                    GitHub ↗
+                  </button>
+                  <button className="resume-btn-outline" style={{ padding: '6px 18px', fontSize: '0.8rem' }}
+                    onClick={() => project.demo !== '#' ? window.open(project.demo, '_blank') : alert('Live demo coming soon')}>
+                    Live Demo ↗
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </section>
+
+        {/* ===== CONTACT ===== */}
+        <section id="contact" className="resume-section">
+          <p className="resume-subtitle">Get in Touch</p>
+          <h2 className="resume-title">Contact Me</h2>
+          <div className="resume-card">
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <span style={{ fontSize: '1.5rem' }}>📧</span>
+                <div>
+                  <div style={{ fontSize: '0.8rem', color: `${themeColors.textSecondary}BB` }}>Email</div>
+                  <a href={`mailto:${resumeData.contact.email}`} style={{ color: `${themeColors.primary}CC`, textDecoration: 'none' }}>
+                    {resumeData.contact.email}
+                  </a>
+                </div>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <span style={{ fontSize: '1.5rem' }}>💼</span>
+                <div>
+                  <div style={{ fontSize: '0.8rem', color: `${themeColors.textSecondary}BB` }}>LinkedIn</div>
+                  <a href={resumeData.contact.linkedin} target="_blank" rel="noreferrer" style={{ color: `${themeColors.primary}CC`, textDecoration: 'none' }}>
+                    View Profile →
+                  </a>
+                </div>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <span style={{ fontSize: '1.5rem' }}>📍</span>
+                <div>
+                  <div style={{ fontSize: '0.8rem', color: `${themeColors.textSecondary}BB` }}>Location</div>
+                  <span style={{ color: `${themeColors.textSecondary}BB` }}>{resumeData.contact.location}</span>
+                </div>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <span style={{ fontSize: '1.5rem' }}>📞</span>
+                <div>
+                  <div style={{ fontSize: '0.8rem', color: `${themeColors.textSecondary}BB` }}>Phone</div>
+                  <a href={`tel:${resumeData.contact.phone}`} style={{ color: `${themeColors.primary}CC`, textDecoration: 'none' }}>
+                    {resumeData.contact.phone}
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ===== FOOTER ===== */}
+        <footer style={{
+          textAlign: 'center',
+          padding: '32px 20px',
+          borderTop: `1px solid ${themeColors.border}`,
+          color: `${themeColors.textSecondary}BB`,
+          fontSize: '0.85rem',
+          backgroundColor: themeColors.sectionBg
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'center', gap: '24px', flexWrap: 'wrap', marginBottom: '12px' }}>
+            <a href="#about" style={{ color: `${themeColors.textSecondary}BB`, textDecoration: 'none' }}>About</a>
+            <a href="#experience" style={{ color: `${themeColors.textSecondary}BB`, textDecoration: 'none' }}>Tech Stack</a>
+            <a href="#projects" style={{ color: `${themeColors.textSecondary}BB`, textDecoration: 'none' }}>Projects</a>
+            <a href="#contact" style={{ color: `${themeColors.textSecondary}BB`, textDecoration: 'none' }}>Contact</a>
+          </div>
+          <p style={{ color: `${themeColors.textSecondary}99` }}>© {new Date().getFullYear()} {resumeData.name}. All Rights Reserved.</p>
+        </footer>
+      </div>
     </>
   );
-}
-
-// Helper function for mobile menu
-function toggleMenu() {
-  const menu = document.querySelector(".menu-links");
-  const icon = document.querySelector(".hamburger-icon");
-  if (menu && icon) {
-    menu.classList.toggle("open");
-    icon.classList.toggle("open");
-  }
 }
