@@ -1,5 +1,7 @@
 const express = require("express");
 
+const router = express.Router();
+
 const {
   registerAdmin,
   loginAdmin,
@@ -17,8 +19,10 @@ const {
   createSkill,
   updateSkill,
   deleteSkill,
+  updateSkillsByCategory,
 
   createCertification,
+  updateCertification,
   deleteCertification,
 
   createLanguage,
@@ -27,160 +31,160 @@ const {
   createHobby,
   deleteHobby,
 
-  updatePersonalInfo
+  updatePersonalInfo,
+
+  upload,
+  uploadImage
 } = require("../controllers/adminController");
 
-const authMiddleware = require("../middleware/authMiddleware");
 
-const router = express.Router();
-
-
-// =========================================
+// =====================================================
 // AUTH
-// =========================================
+// =====================================================
 
+// Register
 router.post("/register", registerAdmin);
 
+// Login
 router.post("/login", loginAdmin);
 
+// Logout
 router.post("/logout", logoutAdmin);
 
-router.get(
-  "/me",
-  authMiddleware,
-  getCurrentAdmin
-);
+// Current logged-in admin
+router.get("/me", getCurrentAdmin);
 
 
-// =========================================
-// PERSONAL INFORMATION
-// =========================================
-
-router.put(
-  "/personal",
-  authMiddleware,
-  updatePersonalInfo
-);
-
-
-// =========================================
+// =====================================================
 // PROJECTS
-// =========================================
+// =====================================================
 
-router.post(
-  "/projects",
-  authMiddleware,
-  createProject
-);
+// Create
+router.post("/projects", createProject);
 
-router.put(
-  "/projects/:id",
-  authMiddleware,
-  updateProject
-);
+// Update
+router.put("/projects/:id", updateProject);
 
-router.delete(
-  "/projects/:id",
-  authMiddleware,
-  deleteProject
-);
+// Delete
+router.delete("/projects/:id", deleteProject);
 
 
-// =========================================
+// =====================================================
 // EDUCATION
-// =========================================
+// =====================================================
 
-router.post(
-  "/education",
-  authMiddleware,
-  createEducation
-);
+// Create
+router.post("/education", createEducation);
 
-router.put(
-  "/education/:id",
-  authMiddleware,
-  updateEducation
-);
+// Update
+router.put("/education/:id", updateEducation);
 
-router.delete(
-  "/education/:id",
-  authMiddleware,
-  deleteEducation
-);
+// Delete
+router.delete("/education/:id", deleteEducation);
 
 
-// =========================================
+// =====================================================
 // SKILLS
-// =========================================
+// =====================================================
 
-router.post(
-  "/skills",
-  authMiddleware,
-  createSkill
-);
+// Create individual skill
+router.post("/skills", createSkill);
 
+// Update individual skill
+router.put("/skills/:id", updateSkill);
+
+// Delete individual skill
+router.delete("/skills/:id", deleteSkill);
+
+// Bulk update skills by category
 router.put(
-  "/skills/:id",
-  authMiddleware,
-  updateSkill
-);
-
-router.delete(
-  "/skills/:id",
-  authMiddleware,
-  deleteSkill
+  "/skills/category/:category",
+  updateSkillsByCategory
 );
 
 
-// =========================================
+// =====================================================
 // CERTIFICATIONS
-// =========================================
+// =====================================================
 
+// Create certification
 router.post(
   "/certifications",
-  authMiddleware,
   createCertification
 );
 
+// Update certification
+router.put(
+  "/certifications/:id",
+  updateCertification
+);
+
+// Delete certification
 router.delete(
   "/certifications/:id",
-  authMiddleware,
   deleteCertification
 );
 
 
-// =========================================
+// =====================================================
 // LANGUAGES
-// =========================================
+// =====================================================
 
+// Create language
 router.post(
   "/languages",
-  authMiddleware,
   createLanguage
 );
 
+// Delete language
 router.delete(
   "/languages/:id",
-  authMiddleware,
   deleteLanguage
 );
 
 
-// =========================================
+// =====================================================
 // HOBBIES
-// =========================================
+// =====================================================
 
+// Create hobby
 router.post(
   "/hobbies",
-  authMiddleware,
   createHobby
 );
 
+// Delete hobby
 router.delete(
   "/hobbies/:id",
-  authMiddleware,
   deleteHobby
 );
 
+
+// =====================================================
+// PERSONAL INFORMATION
+// =====================================================
+
+// Create / Update personal information
+router.put(
+  "/personal",
+  updatePersonalInfo
+);
+
+
+// =====================================================
+// IMAGE UPLOAD
+// =====================================================
+
+// Upload certification image
+router.post(
+  "/upload",
+  upload.single("image"),
+  uploadImage
+);
+
+
+// =====================================================
+// IMPORTANT
+// =====================================================
 
 module.exports = router;

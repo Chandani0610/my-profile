@@ -1,8 +1,71 @@
 const bcrypt = require("bcryptjs");
 const crypto = require("crypto");
+const multer = require("multer");
+const path = require("path");
+const fs = require("fs");
 
 const { pool } = require("../config/database");
 
+// =========================================
+// IMAGE UPLOAD CONFIGURATION
+// =========================================
+
+// Ensure uploads directory exists
+const uploadDir = path.join(__dirname, "../uploads/certifications");
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
+
+// Configure multer for image uploads
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, uploadDir);
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const ext = path.extname(file.originalname);
+    cb(null, 'cert-' + uniqueSuffix + ext);
+  }
+});
+
+const fileFilter = (req, file, cb) => {
+  if (file.mimetype.startsWith('image/')) {
+    cb(null, true);
+  } else {
+    cb(new Error('Only image files are allowed'), false);
+  }
+};
+
+const upload = multer({
+  storage: storage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+  fileFilter: fileFilter
+});
+
+// =========================================
+// UPLOAD IMAGE
+// =========================================
+
+const uploadImage = async (req, res, next) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: "No file uploaded"
+      });
+    }
+
+    const imageUrl = `/uploads/certifications/${req.file.filename}`;
+    
+    res.json({
+      success: true,
+      message: "Image uploaded successfully",
+      data: { url: imageUrl }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
 
 // =========================================
 // CREATE ADMIN
@@ -56,7 +119,6 @@ const registerAdmin = async (req, res, next) => {
     next(error);
   }
 };
-
 
 // =========================================
 // LOGIN
@@ -126,7 +188,6 @@ const loginAdmin = async (req, res, next) => {
     res.json({
       success: true,
       message: "Login successful",
-
       admin: {
         id: admin.id,
         name: admin.name,
@@ -138,7 +199,6 @@ const loginAdmin = async (req, res, next) => {
     next(error);
   }
 };
-
 
 // =========================================
 // LOGOUT
@@ -167,7 +227,6 @@ const logoutAdmin = async (req, res, next) => {
   }
 };
 
-
 // =========================================
 // CURRENT ADMIN
 // =========================================
@@ -178,7 +237,6 @@ const getCurrentAdmin = async (req, res) => {
     admin: req.admin
   });
 };
-
 
 // =========================================
 // CREATE PROJECT
@@ -226,7 +284,6 @@ const createProject = async (req, res, next) => {
     next(error);
   }
 };
-
 
 // =========================================
 // UPDATE PROJECT
@@ -282,7 +339,6 @@ const updateProject = async (req, res, next) => {
   }
 };
 
-
 // =========================================
 // DELETE PROJECT
 // =========================================
@@ -313,7 +369,6 @@ const deleteProject = async (req, res, next) => {
   }
 };
 
-
 // =========================================
 // CREATE EDUCATION
 // =========================================
@@ -327,6 +382,13 @@ const createEducation = async (req, res, next) => {
       year
     } = req.body;
 
+    if (!degree || !college) {
+      return res.status(400).json({
+        success: false,
+        message: "Degree and college are required"
+      });
+    }
+
     const [result] = await pool.query(
       `INSERT INTO education
        (degree, college, marks, year)
@@ -334,8 +396,8 @@ const createEducation = async (req, res, next) => {
       [
         degree,
         college,
-        marks,
-        year
+        marks || "",
+        year || ""
       ]
     );
 
@@ -349,7 +411,6 @@ const createEducation = async (req, res, next) => {
     next(error);
   }
 };
-
 
 // =========================================
 // UPDATE EDUCATION
@@ -399,7 +460,6 @@ const updateEducation = async (req, res, next) => {
   }
 };
 
-
 // =========================================
 // DELETE EDUCATION
 // =========================================
@@ -430,9 +490,8 @@ const deleteEducation = async (req, res, next) => {
   }
 };
 
-
 // =========================================
-// CREATE SKILL
+// CREATE SKILL (Individual)
 // =========================================
 
 const createSkill = async (req, res, next) => {
@@ -441,6 +500,13 @@ const createSkill = async (req, res, next) => {
       category,
       skill_name
     } = req.body;
+
+    if (!category || !skill_name) {
+      return res.status(400).json({
+        success: false,
+        message: "Category and skill name are required"
+      });
+    }
 
     const [result] = await pool.query(
       `INSERT INTO skills
@@ -460,9 +526,8 @@ const createSkill = async (req, res, next) => {
   }
 };
 
-
 // =========================================
-// UPDATE SKILL
+// UPDATE SKILL (Individual)
 // =========================================
 
 const updateSkill = async (req, res, next) => {
@@ -503,9 +568,8 @@ const updateSkill = async (req, res, next) => {
   }
 };
 
-
 // =========================================
-// DELETE SKILL
+// DELETE SKILL (Individual)
 // =========================================
 
 const deleteSkill = async (req, res, next) => {
@@ -534,6 +598,76 @@ const deleteSkill = async (req, res, next) => {
   }
 };
 
+// =========================================
+// BULK UPDATE SKILLS FOR CATEGORY (NEW)
+// =========================================
+
+const updateSkillsByCategory = async (req, res, next) => {
+  try {
+    const { category } = req.params;
+    const { skills } = req.body;
+
+    // Validate category
+    const validCategories = ['languages', 'frontend', 'backend', 'database', 'tools', 'coreSubjects'];
+    if (!validCategories.includes(category)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid category. Must be one of: " + validCategories.join(', ')
+      });
+    }
+
+    // Validate skills is an array
+    if (!Array.isArray(skills)) {
+      return res.status(400).json({
+        success: false,
+        message: "Skills must be an array"
+      });
+    }
+
+    // First, delete all existing skills in this category
+    await pool.query(
+      "DELETE FROM skills WHERE category = ?",
+      [category]
+    );
+
+    // If no skills to add, return success
+    if (skills.length === 0) {
+      return res.json({
+        success: true,
+        message: `All skills removed from ${category}`,
+        data: { category, skills: [] }
+      });
+    }
+
+    // Insert all new skills
+    const insertPromises = skills.map(skillName => {
+      return pool.query(
+        "INSERT INTO skills (category, skill_name) VALUES (?, ?)",
+        [category, skillName.trim()]
+      );
+    });
+
+    await Promise.all(insertPromises);
+
+    // Fetch the updated skills for this category
+    const [updatedSkills] = await pool.query(
+      "SELECT skill_name FROM skills WHERE category = ? ORDER BY id ASC",
+      [category]
+    );
+
+    res.json({
+      success: true,
+      message: `Skills updated successfully for ${category}`,
+      data: {
+        category,
+        skills: updatedSkills.map(row => row.skill_name)
+      }
+    });
+
+  } catch (error) {
+    next(error);
+  }
+};
 
 // =========================================
 // CREATE CERTIFICATION
@@ -542,20 +676,44 @@ const deleteSkill = async (req, res, next) => {
 const createCertification = async (req, res, next) => {
   try {
     const {
-      certification_name
+      name,
+      issuer,
+      credential,
+      url,
+      image,
+      description
     } = req.body;
 
+    if (!name || !issuer) {
+      return res.status(400).json({
+        success: false,
+        message: "Certification name and issuer are required"
+      });
+    }
+
     const [result] = await pool.query(
-      `INSERT INTO certifications
-       (certification_name)
-       VALUES (?)`,
-      [certification_name]
+      `INSERT INTO certifications 
+       (name, issuer, credential, url, image, description)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [
+        name.trim(),
+        issuer.trim(),
+        credential || null,
+        url || null,
+        image || null,
+        description || null
+      ]
+    );
+
+    const [newCert] = await pool.query(
+      "SELECT * FROM certifications WHERE id = ?",
+      [result.insertId]
     );
 
     res.status(201).json({
       success: true,
       message: "Certification added successfully",
-      id: result.insertId
+      data: newCert[0]
     });
 
   } catch (error) {
@@ -563,6 +721,76 @@ const createCertification = async (req, res, next) => {
   }
 };
 
+// =========================================
+// UPDATE CERTIFICATION
+// =========================================
+
+const updateCertification = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const {
+      name,
+      issuer,
+      credential,
+      url,
+      image,
+      description
+    } = req.body;
+
+    if (!name || !issuer) {
+      return res.status(400).json({
+        success: false,
+        message: "Certification name and issuer are required"
+      });
+    }
+
+    const [existing] = await pool.query(
+      "SELECT * FROM certifications WHERE id = ?",
+      [id]
+    );
+
+    if (existing.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Certification not found"
+      });
+    }
+
+    const [result] = await pool.query(
+      `UPDATE certifications 
+       SET name = ?,
+           issuer = ?,
+           credential = ?,
+           url = ?,
+           image = ?,
+           description = ?
+       WHERE id = ?`,
+      [
+        name.trim(),
+        issuer.trim(),
+        credential || null,
+        url || null,
+        image || null,
+        description || null,
+        id
+      ]
+    );
+
+    const [updatedCert] = await pool.query(
+      "SELECT * FROM certifications WHERE id = ?",
+      [id]
+    );
+
+    res.json({
+      success: true,
+      message: "Certification updated successfully",
+      data: updatedCert[0]
+    });
+
+  } catch (error) {
+    next(error);
+  }
+};
 
 // =========================================
 // DELETE CERTIFICATION
@@ -572,17 +800,29 @@ const deleteCertification = async (req, res, next) => {
   try {
     const { id } = req.params;
 
-    const [result] = await pool.query(
-      "DELETE FROM certifications WHERE id = ?",
+    const [existing] = await pool.query(
+      "SELECT * FROM certifications WHERE id = ?",
       [id]
     );
 
-    if (result.affectedRows === 0) {
+    if (existing.length === 0) {
       return res.status(404).json({
         success: false,
         message: "Certification not found"
       });
     }
+
+    if (existing[0].image) {
+      const imagePath = path.join(__dirname, "..", existing[0].image);
+      if (fs.existsSync(imagePath)) {
+        fs.unlinkSync(imagePath);
+      }
+    }
+
+    await pool.query(
+      "DELETE FROM certifications WHERE id = ?",
+      [id]
+    );
 
     res.json({
       success: true,
@@ -593,7 +833,6 @@ const deleteCertification = async (req, res, next) => {
     next(error);
   }
 };
-
 
 // =========================================
 // CREATE LANGUAGE
@@ -607,11 +846,18 @@ const createLanguage = async (req, res, next) => {
       level
     } = req.body;
 
+    if (!name) {
+      return res.status(400).json({
+        success: false,
+        message: "Language name is required"
+      });
+    }
+
     const [result] = await pool.query(
       `INSERT INTO languages
        (name, flag, level)
        VALUES (?, ?, ?)`,
-      [name, flag, level]
+      [name, flag || "", level || ""]
     );
 
     res.status(201).json({
@@ -624,7 +870,6 @@ const createLanguage = async (req, res, next) => {
     next(error);
   }
 };
-
 
 // =========================================
 // DELETE LANGUAGE
@@ -656,7 +901,6 @@ const deleteLanguage = async (req, res, next) => {
   }
 };
 
-
 // =========================================
 // CREATE HOBBY
 // =========================================
@@ -666,6 +910,13 @@ const createHobby = async (req, res, next) => {
     const {
       hobby_name
     } = req.body;
+
+    if (!hobby_name) {
+      return res.status(400).json({
+        success: false,
+        message: "Hobby name is required"
+      });
+    }
 
     const [result] = await pool.query(
       `INSERT INTO hobbies
@@ -684,7 +935,6 @@ const createHobby = async (req, res, next) => {
     next(error);
   }
 };
-
 
 // =========================================
 // DELETE HOBBY
@@ -715,7 +965,6 @@ const deleteHobby = async (req, res, next) => {
     next(error);
   }
 };
-
 
 // =========================================
 // UPDATE PERSONAL INFO
@@ -792,33 +1041,50 @@ const updatePersonalInfo = async (req, res, next) => {
   }
 };
 
+// =========================================
+// EXPORT ALL MODULES
+// =========================================
 
 module.exports = {
+  // Auth
   registerAdmin,
   loginAdmin,
   logoutAdmin,
   getCurrentAdmin,
 
+  // Projects
   createProject,
   updateProject,
   deleteProject,
 
+  // Education
   createEducation,
   updateEducation,
   deleteEducation,
 
+  // Skills
   createSkill,
   updateSkill,
   deleteSkill,
+  updateSkillsByCategory, // ← NEW: Bulk update
 
+  // Certifications
   createCertification,
+  updateCertification,
   deleteCertification,
 
+  // Languages
   createLanguage,
   deleteLanguage,
 
+  // Hobbies
   createHobby,
   deleteHobby,
 
-  updatePersonalInfo
+  // Personal Info
+  updatePersonalInfo,
+
+  // Image Upload
+  upload,
+  uploadImage
 };
