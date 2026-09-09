@@ -3,188 +3,247 @@ const express = require("express");
 const router = express.Router();
 
 const {
+  // =====================================================
+  // AUTH
+  // =====================================================
   registerAdmin,
   loginAdmin,
   logoutAdmin,
   getCurrentAdmin,
 
+  // =====================================================
+  // PROJECTS
+  // =====================================================
   createProject,
   updateProject,
   deleteProject,
 
+  // =====================================================
+  // EDUCATION
+  // =====================================================
   createEducation,
   updateEducation,
   deleteEducation,
 
+  // =====================================================
+  // SKILLS
+  // =====================================================
   createSkill,
   updateSkill,
   deleteSkill,
   updateSkillsByCategory,
 
+  // =====================================================
+  // CERTIFICATIONS
+  // =====================================================
+  getCertifications,
   createCertification,
   updateCertification,
   deleteCertification,
 
+  // =====================================================
+  // LANGUAGES
+  // =====================================================
+  getLanguages,
   createLanguage,
+  updateLanguage,
   deleteLanguage,
 
+  // =====================================================
+  // HOBBIES
+  // =====================================================
+  getHobbies,
   createHobby,
+  updateHobby,
   deleteHobby,
 
+  // =====================================================
+  // PERSONAL INFORMATION
+  // =====================================================
+  getPersonalInfo,
   updatePersonalInfo,
 
+  // =====================================================
+  // IMAGE / PDF UPLOAD
+  // =====================================================
   upload,
-  uploadImage
+  uploadImage,
 } = require("../controllers/adminController");
-
 
 // =====================================================
 // AUTH
 // =====================================================
 
-// Register
+// Register Admin
 router.post("/register", registerAdmin);
 
-// Login
+// Login Admin
 router.post("/login", loginAdmin);
 
-// Logout
+// Logout Admin
 router.post("/logout", logoutAdmin);
 
-// Current logged-in admin
+// Get Current Logged-in Admin
 router.get("/me", getCurrentAdmin);
-
 
 // =====================================================
 // PROJECTS
 // =====================================================
 
-// Create
+// Create Project
 router.post("/projects", createProject);
 
-// Update
+// Update Project
 router.put("/projects/:id", updateProject);
 
-// Delete
+// Delete Project
 router.delete("/projects/:id", deleteProject);
-
 
 // =====================================================
 // EDUCATION
 // =====================================================
 
-// Create
+// Create Education
 router.post("/education", createEducation);
 
-// Update
+// Update Education
 router.put("/education/:id", updateEducation);
 
-// Delete
+// Delete Education
 router.delete("/education/:id", deleteEducation);
-
 
 // =====================================================
 // SKILLS
 // =====================================================
 
-// Create individual skill
+// Create Individual Skill
 router.post("/skills", createSkill);
 
-// Update individual skill
+// Update Individual Skill
 router.put("/skills/:id", updateSkill);
 
-// Delete individual skill
+// Delete Individual Skill
 router.delete("/skills/:id", deleteSkill);
 
-// Bulk update skills by category
+// Bulk Update Skills by Category
 router.put(
   "/skills/category/:category",
   updateSkillsByCategory
 );
 
-
 // =====================================================
 // CERTIFICATIONS
 // =====================================================
 
-// Create certification
+// Get All Certifications
+router.get(
+  "/certifications",
+  getCertifications
+);
+
+// Create Certification
 router.post(
   "/certifications",
   createCertification
 );
 
-// Update certification
+// Update Certification
 router.put(
   "/certifications/:id",
   updateCertification
 );
 
-// Delete certification
+// Delete Certification
 router.delete(
   "/certifications/:id",
   deleteCertification
 );
 
-
 // =====================================================
 // LANGUAGES
 // =====================================================
 
-// Create language
+// Get All Languages
+router.get(
+  "/languages",
+  getLanguages
+);
+
+// Create Language
 router.post(
   "/languages",
   createLanguage
 );
 
-// Delete language
+// Update Language
+router.put(
+  "/languages/:id",
+  updateLanguage
+);
+
+// Delete Language
 router.delete(
   "/languages/:id",
   deleteLanguage
 );
 
-
 // =====================================================
 // HOBBIES
 // =====================================================
 
-// Create hobby
+// Get All Hobbies
+router.get(
+  "/hobbies",
+  getHobbies
+);
+
+// Create Hobby
 router.post(
   "/hobbies",
   createHobby
 );
 
-// Delete hobby
+// Update Hobby
+router.put(
+  "/hobbies/:id",
+  updateHobby
+);
+
+// Delete Hobby
 router.delete(
   "/hobbies/:id",
   deleteHobby
 );
 
-
 // =====================================================
 // PERSONAL INFORMATION
 // =====================================================
 
-// Create / Update personal information
+// Get Personal Information
+router.get(
+  "/personal",
+  getPersonalInfo
+);
+
+// Create / Update Personal Information
 router.put(
   "/personal",
   updatePersonalInfo
 );
 
-
 // =====================================================
-// IMAGE UPLOAD
+// IMAGE / PDF UPLOAD
 // =====================================================
 
-// Upload certification image
+// Upload Certification Image / PDF
 router.post(
   "/upload",
   upload.single("image"),
   uploadImage
 );
 
-
 // =====================================================
-// IMPORTANT
+// EXPORT ROUTER
 // =====================================================
 
 module.exports = router;

@@ -6,144 +6,202 @@ const fs = require("fs");
 
 const { pool } = require("../config/database");
 
-// =========================================
-// IMAGE UPLOAD CONFIGURATION
-// =========================================
+// ============================================================
+// UPLOAD CONFIGURATION
+// ============================================================
 
-// Ensure uploads directory exists
 const uploadDir = path.join(__dirname, "../uploads/certifications");
+
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
 
-// Configure multer for image uploads
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     cb(null, uploadDir);
   },
+
   filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const uniqueSuffix =
+      Date.now() + "-" + Math.round(Math.random() * 1e9);
+
     const ext = path.extname(file.originalname);
-    cb(null, 'cert-' + uniqueSuffix + ext);
-  }
+
+    cb(null, "cert-" + uniqueSuffix + ext);
+  },
 });
 
+// Allow images and PDF files
 const fileFilter = (req, file, cb) => {
-  if (file.mimetype.startsWith('image/')) {
+  const allowedMimeTypes = [
+    "image/jpeg",
+    "image/jpg",
+    "image/png",
+    "image/webp",
+    "image/gif",
+    "application/pdf",
+  ];
+
+  if (allowedMimeTypes.includes(file.mimetype)) {
     cb(null, true);
   } else {
-    cb(new Error('Only image files are allowed'), false);
+    cb(
+      new Error(
+        "Only JPG, JPEG, PNG, WEBP, GIF and PDF files are allowed"
+      ),
+      false
+    );
   }
 };
 
 const upload = multer({
-  storage: storage,
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
-  fileFilter: fileFilter
+  storage,
+  limits: {
+    fileSize: 5 * 1024 * 1024,
+  },
+  fileFilter,
 });
 
-// =========================================
-// UPLOAD IMAGE
-// =========================================
+// ============================================================
+// HELPER - DELETE UPLOADED FILE
+// ============================================================
+
+const deleteUploadedFile = (fileUrl) => {
+  if (!fileUrl) return;
+
+  try {
+    const relativePath = fileUrl.startsWith("/")
+      ? fileUrl.substring(1)
+      : fileUrl;
+
+    const filePath = path.join(__dirname, "..", relativePath);
+
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+    }
+  } catch (error) {
+    console.error("File delete error:", error.message);
+  }
+};
+
+// ============================================================
+// UPLOAD IMAGE / PDF
+// ============================================================
 
 const uploadImage = async (req, res, next) => {
   try {
     if (!req.file) {
       return res.status(400).json({
         success: false,
-        message: "No file uploaded"
+        message: "No file uploaded",
       });
     }
 
-    const imageUrl = `/uploads/certifications/${req.file.filename}`;
-    
-    res.json({
+    const fileUrl = `/uploads/certifications/${req.file.filename}`;
+
+    res.status(200).json({
       success: true,
-      message: "Image uploaded successfully",
-      data: { url: imageUrl }
+      message: "File uploaded successfully",
+      data: {
+        url: fileUrl,
+        filename: req.file.filename,
+        mimetype: req.file.mimetype,
+        size: req.file.size,
+      },
     });
   } catch (error) {
     next(error);
   }
 };
 
-// =========================================
-// CREATE ADMIN
-// =========================================
+// ============================================================
+// REGISTER ADMIN
+// ============================================================
 
 const registerAdmin = async (req, res, next) => {
   try {
-    const { name, email, password } = req.body;
+    const {
+      name,
+      email,
+      password,
+    } = req.body;
 
     if (!name || !email || !password) {
       return res.status(400).json({
         success: false,
-        message: "Name, email and password are required"
+        message: "Name, email and password are required",
       });
     }
 
     if (password.length < 6) {
       return res.status(400).json({
         success: false,
-        message: "Password must contain at least 6 characters"
+        message: "Password must contain at least 6 characters",
       });
     }
 
     const [existing] = await pool.query(
       "SELECT id FROM admins WHERE email = ?",
-      [email]
+      [email.trim()]
     );
 
     if (existing.length > 0) {
       return res.status(409).json({
         success: false,
-        message: "Admin already exists"
+        message: "Admin already exists",
       });
     }
 
     const hashedPassword = await bcrypt.hash(password, 12);
 
     const [result] = await pool.query(
-      `INSERT INTO admins (name, email, password)
+      `INSERT INTO admins
+       (name, email, password)
        VALUES (?, ?, ?)`,
-      [name, email, hashedPassword]
+      [
+        name.trim(),
+        email.trim(),
+        hashedPassword,
+      ]
     );
 
     res.status(201).json({
       success: true,
       message: "Admin created successfully",
-      adminId: result.insertId
+      adminId: result.insertId,
     });
-
   } catch (error) {
     next(error);
   }
 };
 
-// =========================================
-// LOGIN
-// =========================================
+// ============================================================
+// LOGIN ADMIN
+// ============================================================
 
 const loginAdmin = async (req, res, next) => {
   try {
-    const { email, password } = req.body;
+    const {
+      email,
+      password,
+    } = req.body;
 
     if (!email || !password) {
       return res.status(400).json({
         success: false,
-        message: "Email and password are required"
+        message: "Email and password are required",
       });
     }
 
     const [admins] = await pool.query(
       "SELECT * FROM admins WHERE email = ?",
-      [email]
+      [email.trim()]
     );
 
     if (admins.length === 0) {
       return res.status(401).json({
         success: false,
-        message: "Invalid email or password"
+        message: "Invalid email or password",
       });
     }
 
@@ -157,11 +215,13 @@ const loginAdmin = async (req, res, next) => {
     if (!passwordMatch) {
       return res.status(401).json({
         success: false,
-        message: "Invalid email or password"
+        message: "Invalid email or password",
       });
     }
 
-    const sessionToken = crypto.randomBytes(32).toString("hex");
+    const sessionToken = crypto
+      .randomBytes(32)
+      .toString("hex");
 
     const expiresAt = new Date(
       Date.now() + 7 * 24 * 60 * 60 * 1000
@@ -174,7 +234,7 @@ const loginAdmin = async (req, res, next) => {
       [
         admin.id,
         sessionToken,
-        expiresAt
+        expiresAt,
       ]
     );
 
@@ -182,7 +242,7 @@ const loginAdmin = async (req, res, next) => {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
-      maxAge: 7 * 24 * 60 * 60 * 1000
+      maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
     res.json({
@@ -191,18 +251,17 @@ const loginAdmin = async (req, res, next) => {
       admin: {
         id: admin.id,
         name: admin.name,
-        email: admin.email
-      }
+        email: admin.email,
+      },
     });
-
   } catch (error) {
     next(error);
   }
 };
 
-// =========================================
-// LOGOUT
-// =========================================
+// ============================================================
+// LOGOUT ADMIN
+// ============================================================
 
 const logoutAdmin = async (req, res, next) => {
   try {
@@ -219,29 +278,29 @@ const logoutAdmin = async (req, res, next) => {
 
     res.json({
       success: true,
-      message: "Logged out successfully"
+      message: "Logged out successfully",
     });
-
   } catch (error) {
     next(error);
   }
 };
 
-// =========================================
+// ============================================================
 // CURRENT ADMIN
-// =========================================
+// ============================================================
 
 const getCurrentAdmin = async (req, res) => {
   res.json({
     success: true,
-    admin: req.admin
+    admin: req.admin,
   });
 };
 
-// =========================================
-// CREATE PROJECT
-// =========================================
+// ============================================================
+// PROJECTS
+// ============================================================
 
+// CREATE PROJECT
 const createProject = async (req, res, next) => {
   try {
     const {
@@ -250,13 +309,13 @@ const createProject = async (req, res, next) => {
       tech,
       description,
       github,
-      demo
+      demo,
     } = req.body;
 
-    if (!title) {
+    if (!title || !title.trim()) {
       return res.status(400).json({
         success: false,
-        message: "Project title is required"
+        message: "Project title is required",
       });
     }
 
@@ -265,30 +324,31 @@ const createProject = async (req, res, next) => {
        (title, icon, tech, description, github, demo)
        VALUES (?, ?, ?, ?, ?, ?)`,
       [
-        title,
+        title.trim(),
         icon || "",
         tech || "",
         description || "",
         github || "#",
-        demo || "#"
+        demo || "#",
       ]
+    );
+
+    const [newProject] = await pool.query(
+      "SELECT * FROM projects WHERE id = ?",
+      [result.insertId]
     );
 
     res.status(201).json({
       success: true,
       message: "Project created successfully",
-      id: result.insertId
+      data: newProject[0],
     });
-
   } catch (error) {
     next(error);
   }
 };
 
-// =========================================
 // UPDATE PROJECT
-// =========================================
-
 const updateProject = async (req, res, next) => {
   try {
     const { id } = req.params;
@@ -299,8 +359,15 @@ const updateProject = async (req, res, next) => {
       tech,
       description,
       github,
-      demo
+      demo,
     } = req.body;
+
+    if (!title || !title.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: "Project title is required",
+      });
+    }
 
     const [result] = await pool.query(
       `UPDATE projects
@@ -312,37 +379,39 @@ const updateProject = async (req, res, next) => {
            demo = ?
        WHERE id = ?`,
       [
-        title,
-        icon,
-        tech,
-        description,
-        github,
-        demo,
-        id
+        title.trim(),
+        icon || "",
+        tech || "",
+        description || "",
+        github || "#",
+        demo || "#",
+        id,
       ]
     );
 
     if (result.affectedRows === 0) {
       return res.status(404).json({
         success: false,
-        message: "Project not found"
+        message: "Project not found",
       });
     }
 
+    const [updatedProject] = await pool.query(
+      "SELECT * FROM projects WHERE id = ?",
+      [id]
+    );
+
     res.json({
       success: true,
-      message: "Project updated successfully"
+      message: "Project updated successfully",
+      data: updatedProject[0],
     });
-
   } catch (error) {
     next(error);
   }
 };
 
-// =========================================
 // DELETE PROJECT
-// =========================================
-
 const deleteProject = async (req, res, next) => {
   try {
     const { id } = req.params;
@@ -355,37 +424,37 @@ const deleteProject = async (req, res, next) => {
     if (result.affectedRows === 0) {
       return res.status(404).json({
         success: false,
-        message: "Project not found"
+        message: "Project not found",
       });
     }
 
     res.json({
       success: true,
-      message: "Project deleted successfully"
+      message: "Project deleted successfully",
     });
-
   } catch (error) {
     next(error);
   }
 };
 
-// =========================================
-// CREATE EDUCATION
-// =========================================
+// ============================================================
+// EDUCATION
+// ============================================================
 
+// CREATE EDUCATION
 const createEducation = async (req, res, next) => {
   try {
     const {
       degree,
       college,
       marks,
-      year
+      year,
     } = req.body;
 
     if (!degree || !college) {
       return res.status(400).json({
         success: false,
-        message: "Degree and college are required"
+        message: "Degree and college are required",
       });
     }
 
@@ -394,28 +463,29 @@ const createEducation = async (req, res, next) => {
        (degree, college, marks, year)
        VALUES (?, ?, ?, ?)`,
       [
-        degree,
-        college,
+        degree.trim(),
+        college.trim(),
         marks || "",
-        year || ""
+        year || "",
       ]
+    );
+
+    const [newEducation] = await pool.query(
+      "SELECT * FROM education WHERE id = ?",
+      [result.insertId]
     );
 
     res.status(201).json({
       success: true,
       message: "Education added successfully",
-      id: result.insertId
+      data: newEducation[0],
     });
-
   } catch (error) {
     next(error);
   }
 };
 
-// =========================================
 // UPDATE EDUCATION
-// =========================================
-
 const updateEducation = async (req, res, next) => {
   try {
     const { id } = req.params;
@@ -424,8 +494,15 @@ const updateEducation = async (req, res, next) => {
       degree,
       college,
       marks,
-      year
+      year,
     } = req.body;
+
+    if (!degree || !college) {
+      return res.status(400).json({
+        success: false,
+        message: "Degree and college are required",
+      });
+    }
 
     const [result] = await pool.query(
       `UPDATE education
@@ -435,35 +512,37 @@ const updateEducation = async (req, res, next) => {
            year = ?
        WHERE id = ?`,
       [
-        degree,
-        college,
-        marks,
-        year,
-        id
+        degree.trim(),
+        college.trim(),
+        marks || "",
+        year || "",
+        id,
       ]
     );
 
     if (result.affectedRows === 0) {
       return res.status(404).json({
         success: false,
-        message: "Education not found"
+        message: "Education not found",
       });
     }
 
+    const [updatedEducation] = await pool.query(
+      "SELECT * FROM education WHERE id = ?",
+      [id]
+    );
+
     res.json({
       success: true,
-      message: "Education updated successfully"
+      message: "Education updated successfully",
+      data: updatedEducation[0],
     });
-
   } catch (error) {
     next(error);
   }
 };
 
-// =========================================
 // DELETE EDUCATION
-// =========================================
-
 const deleteEducation = async (req, res, next) => {
   try {
     const { id } = req.params;
@@ -476,35 +555,35 @@ const deleteEducation = async (req, res, next) => {
     if (result.affectedRows === 0) {
       return res.status(404).json({
         success: false,
-        message: "Education not found"
+        message: "Education not found",
       });
     }
 
     res.json({
       success: true,
-      message: "Education deleted successfully"
+      message: "Education deleted successfully",
     });
-
   } catch (error) {
     next(error);
   }
 };
 
-// =========================================
-// CREATE SKILL (Individual)
-// =========================================
+// ============================================================
+// SKILLS
+// ============================================================
 
+// CREATE SKILL
 const createSkill = async (req, res, next) => {
   try {
     const {
       category,
-      skill_name
+      skill_name,
     } = req.body;
 
     if (!category || !skill_name) {
       return res.status(400).json({
         success: false,
-        message: "Category and skill name are required"
+        message: "Category and skill name are required",
       });
     }
 
@@ -512,32 +591,38 @@ const createSkill = async (req, res, next) => {
       `INSERT INTO skills
        (category, skill_name)
        VALUES (?, ?)`,
-      [category, skill_name]
+      [
+        category,
+        skill_name.trim(),
+      ]
     );
 
     res.status(201).json({
       success: true,
       message: "Skill added successfully",
-      id: result.insertId
+      id: result.insertId,
     });
-
   } catch (error) {
     next(error);
   }
 };
 
-// =========================================
-// UPDATE SKILL (Individual)
-// =========================================
-
+// UPDATE SKILL
 const updateSkill = async (req, res, next) => {
   try {
     const { id } = req.params;
 
     const {
       category,
-      skill_name
+      skill_name,
     } = req.body;
+
+    if (!category || !skill_name) {
+      return res.status(400).json({
+        success: false,
+        message: "Category and skill name are required",
+      });
+    }
 
     const [result] = await pool.query(
       `UPDATE skills
@@ -546,32 +631,28 @@ const updateSkill = async (req, res, next) => {
        WHERE id = ?`,
       [
         category,
-        skill_name,
-        id
+        skill_name.trim(),
+        id,
       ]
     );
 
     if (result.affectedRows === 0) {
       return res.status(404).json({
         success: false,
-        message: "Skill not found"
+        message: "Skill not found",
       });
     }
 
     res.json({
       success: true,
-      message: "Skill updated successfully"
+      message: "Skill updated successfully",
     });
-
   } catch (error) {
     next(error);
   }
 };
 
-// =========================================
-// DELETE SKILL (Individual)
-// =========================================
-
+// DELETE SKILL
 const deleteSkill = async (req, res, next) => {
   try {
     const { id } = req.params;
@@ -584,74 +665,100 @@ const deleteSkill = async (req, res, next) => {
     if (result.affectedRows === 0) {
       return res.status(404).json({
         success: false,
-        message: "Skill not found"
+        message: "Skill not found",
       });
     }
 
     res.json({
       success: true,
-      message: "Skill deleted successfully"
+      message: "Skill deleted successfully",
     });
-
   } catch (error) {
     next(error);
   }
 };
 
-// =========================================
-// BULK UPDATE SKILLS FOR CATEGORY (NEW)
-// =========================================
-
-const updateSkillsByCategory = async (req, res, next) => {
+// BULK UPDATE SKILLS
+const updateSkillsByCategory = async (
+  req,
+  res,
+  next
+) => {
   try {
     const { category } = req.params;
     const { skills } = req.body;
 
-    // Validate category
-    const validCategories = ['languages', 'frontend', 'backend', 'database', 'tools', 'coreSubjects'];
+    const validCategories = [
+      "languages",
+      "frontend",
+      "backend",
+      "database",
+      "tools",
+      "coreSubjects",
+    ];
+
     if (!validCategories.includes(category)) {
       return res.status(400).json({
         success: false,
-        message: "Invalid category. Must be one of: " + validCategories.join(', ')
+        message:
+          "Invalid category. Must be one of: " +
+          validCategories.join(", "),
       });
     }
 
-    // Validate skills is an array
     if (!Array.isArray(skills)) {
       return res.status(400).json({
         success: false,
-        message: "Skills must be an array"
+        message: "Skills must be an array",
       });
     }
 
-    // First, delete all existing skills in this category
     await pool.query(
       "DELETE FROM skills WHERE category = ?",
       [category]
     );
 
-    // If no skills to add, return success
     if (skills.length === 0) {
       return res.json({
         success: true,
         message: `All skills removed from ${category}`,
-        data: { category, skills: [] }
+        data: {
+          category,
+          skills: [],
+        },
       });
     }
 
-    // Insert all new skills
-    const insertPromises = skills.map(skillName => {
-      return pool.query(
-        "INSERT INTO skills (category, skill_name) VALUES (?, ?)",
-        [category, skillName.trim()]
+    const cleanedSkills = skills
+      .map((skill) =>
+        typeof skill === "string"
+          ? skill.trim()
+          : ""
+      )
+      .filter(Boolean);
+
+    if (cleanedSkills.length > 0) {
+      const insertPromises = cleanedSkills.map(
+        (skillName) =>
+          pool.query(
+            `INSERT INTO skills
+             (category, skill_name)
+             VALUES (?, ?)`,
+            [
+              category,
+              skillName,
+            ]
+          )
       );
-    });
 
-    await Promise.all(insertPromises);
+      await Promise.all(insertPromises);
+    }
 
-    // Fetch the updated skills for this category
     const [updatedSkills] = await pool.query(
-      "SELECT skill_name FROM skills WHERE category = ? ORDER BY id ASC",
+      `SELECT skill_name
+       FROM skills
+       WHERE category = ?
+       ORDER BY id ASC`,
       [category]
     );
 
@@ -660,20 +767,48 @@ const updateSkillsByCategory = async (req, res, next) => {
       message: `Skills updated successfully for ${category}`,
       data: {
         category,
-        skills: updatedSkills.map(row => row.skill_name)
-      }
+        skills: updatedSkills.map(
+          (row) => row.skill_name
+        ),
+      },
     });
-
   } catch (error) {
     next(error);
   }
 };
 
-// =========================================
-// CREATE CERTIFICATION
-// =========================================
+// ============================================================
+// CERTIFICATIONS
+// ============================================================
 
-const createCertification = async (req, res, next) => {
+// GET CERTIFICATIONS
+const getCertifications = async (
+  req,
+  res,
+  next
+) => {
+  try {
+    const [certifications] = await pool.query(
+      `SELECT *
+       FROM certifications
+       ORDER BY id DESC`
+    );
+
+    res.json({
+      success: true,
+      data: certifications,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// CREATE CERTIFICATION
+const createCertification = async (
+  req,
+  res,
+  next
+) => {
   try {
     const {
       name,
@@ -681,83 +816,108 @@ const createCertification = async (req, res, next) => {
       credential,
       url,
       image,
-      description
+      description,
     } = req.body;
 
-    if (!name || !issuer) {
+    if (!name || !name.trim()) {
       return res.status(400).json({
         success: false,
-        message: "Certification name and issuer are required"
+        message: "Certification name is required",
+      });
+    }
+
+    if (!issuer || !issuer.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: "Certification issuer is required",
       });
     }
 
     const [result] = await pool.query(
-      `INSERT INTO certifications 
+      `INSERT INTO certifications
        (name, issuer, credential, url, image, description)
        VALUES (?, ?, ?, ?, ?, ?)`,
       [
         name.trim(),
         issuer.trim(),
-        credential || null,
-        url || null,
-        image || null,
-        description || null
+        credential?.trim() || null,
+        url?.trim() || null,
+        image?.trim() || null,
+        description?.trim() || null,
       ]
     );
 
-    const [newCert] = await pool.query(
-      "SELECT * FROM certifications WHERE id = ?",
-      [result.insertId]
-    );
+    const [newCertification] =
+      await pool.query(
+        `SELECT *
+         FROM certifications
+         WHERE id = ?`,
+        [result.insertId]
+      );
 
     res.status(201).json({
       success: true,
       message: "Certification added successfully",
-      data: newCert[0]
+      data: newCertification[0],
     });
-
   } catch (error) {
     next(error);
   }
 };
 
-// =========================================
 // UPDATE CERTIFICATION
-// =========================================
-
-const updateCertification = async (req, res, next) => {
+const updateCertification = async (
+  req,
+  res,
+  next
+) => {
   try {
     const { id } = req.params;
+
     const {
       name,
       issuer,
       credential,
       url,
       image,
-      description
+      description,
     } = req.body;
 
-    if (!name || !issuer) {
+    if (!name || !name.trim()) {
       return res.status(400).json({
         success: false,
-        message: "Certification name and issuer are required"
+        message: "Certification name is required",
+      });
+    }
+
+    if (!issuer || !issuer.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: "Certification issuer is required",
       });
     }
 
     const [existing] = await pool.query(
-      "SELECT * FROM certifications WHERE id = ?",
+      `SELECT *
+       FROM certifications
+       WHERE id = ?`,
       [id]
     );
 
     if (existing.length === 0) {
       return res.status(404).json({
         success: false,
-        message: "Certification not found"
+        message: "Certification not found",
       });
     }
 
-    const [result] = await pool.query(
-      `UPDATE certifications 
+    const oldImage = existing[0].image;
+
+    const newImage =
+      image?.trim() || null;
+
+    await pool.query(
+      `UPDATE certifications
        SET name = ?,
            issuer = ?,
            credential = ?,
@@ -768,55 +928,68 @@ const updateCertification = async (req, res, next) => {
       [
         name.trim(),
         issuer.trim(),
-        credential || null,
-        url || null,
-        image || null,
-        description || null,
-        id
+        credential?.trim() || null,
+        url?.trim() || null,
+        newImage,
+        description?.trim() || null,
+        id,
       ]
     );
 
-    const [updatedCert] = await pool.query(
-      "SELECT * FROM certifications WHERE id = ?",
-      [id]
-    );
+    // Delete old image if replaced
+    if (
+      oldImage &&
+      newImage &&
+      oldImage !== newImage
+    ) {
+      deleteUploadedFile(oldImage);
+    }
+
+    const [updatedCertification] =
+      await pool.query(
+        `SELECT *
+         FROM certifications
+         WHERE id = ?`,
+        [id]
+      );
 
     res.json({
       success: true,
       message: "Certification updated successfully",
-      data: updatedCert[0]
+      data: updatedCertification[0],
     });
-
   } catch (error) {
     next(error);
   }
 };
 
-// =========================================
 // DELETE CERTIFICATION
-// =========================================
-
-const deleteCertification = async (req, res, next) => {
+const deleteCertification = async (
+  req,
+  res,
+  next
+) => {
   try {
     const { id } = req.params;
 
     const [existing] = await pool.query(
-      "SELECT * FROM certifications WHERE id = ?",
+      `SELECT *
+       FROM certifications
+       WHERE id = ?`,
       [id]
     );
 
     if (existing.length === 0) {
       return res.status(404).json({
         success: false,
-        message: "Certification not found"
+        message: "Certification not found",
       });
     }
 
     if (existing[0].image) {
-      const imagePath = path.join(__dirname, "..", existing[0].image);
-      if (fs.existsSync(imagePath)) {
-        fs.unlinkSync(imagePath);
-      }
+      deleteUploadedFile(
+        existing[0].image
+      );
     }
 
     await pool.query(
@@ -826,30 +999,56 @@ const deleteCertification = async (req, res, next) => {
 
     res.json({
       success: true,
-      message: "Certification deleted successfully"
+      message: "Certification deleted successfully",
     });
-
   } catch (error) {
     next(error);
   }
 };
 
-// =========================================
-// CREATE LANGUAGE
-// =========================================
+// ============================================================
+// LANGUAGES
+// ============================================================
 
-const createLanguage = async (req, res, next) => {
+// GET LANGUAGES
+const getLanguages = async (
+  req,
+  res,
+  next
+) => {
+  try {
+    const [languages] = await pool.query(
+      `SELECT *
+       FROM languages
+       ORDER BY id ASC`
+    );
+
+    res.json({
+      success: true,
+      data: languages,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// CREATE LANGUAGE
+const createLanguage = async (
+  req,
+  res,
+  next
+) => {
   try {
     const {
       name,
       flag,
-      level
+      level,
     } = req.body;
 
-    if (!name) {
+    if (!name || !name.trim()) {
       return res.status(400).json({
         success: false,
-        message: "Language name is required"
+        message: "Language name is required",
       });
     }
 
@@ -857,25 +1056,94 @@ const createLanguage = async (req, res, next) => {
       `INSERT INTO languages
        (name, flag, level)
        VALUES (?, ?, ?)`,
-      [name, flag || "", level || ""]
+      [
+        name.trim(),
+        flag || "",
+        level || "",
+      ]
     );
+
+    const [newLanguage] =
+      await pool.query(
+        "SELECT * FROM languages WHERE id = ?",
+        [result.insertId]
+      );
 
     res.status(201).json({
       success: true,
       message: "Language added successfully",
-      id: result.insertId
+      data: newLanguage[0],
     });
-
   } catch (error) {
     next(error);
   }
 };
 
-// =========================================
-// DELETE LANGUAGE
-// =========================================
+// UPDATE LANGUAGE
+const updateLanguage = async (
+  req,
+  res,
+  next
+) => {
+  try {
+    const { id } = req.params;
 
-const deleteLanguage = async (req, res, next) => {
+    const {
+      name,
+      flag,
+      level,
+    } = req.body;
+
+    if (!name || !name.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: "Language name is required",
+      });
+    }
+
+    const [result] = await pool.query(
+      `UPDATE languages
+       SET name = ?,
+           flag = ?,
+           level = ?
+       WHERE id = ?`,
+      [
+        name.trim(),
+        flag || "",
+        level || "",
+        id,
+      ]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Language not found",
+      });
+    }
+
+    const [updatedLanguage] =
+      await pool.query(
+        "SELECT * FROM languages WHERE id = ?",
+        [id]
+      );
+
+    res.json({
+      success: true,
+      message: "Language updated successfully",
+      data: updatedLanguage[0],
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// DELETE LANGUAGE
+const deleteLanguage = async (
+  req,
+  res,
+  next
+) => {
   try {
     const { id } = req.params;
 
@@ -887,34 +1155,63 @@ const deleteLanguage = async (req, res, next) => {
     if (result.affectedRows === 0) {
       return res.status(404).json({
         success: false,
-        message: "Language not found"
+        message: "Language not found",
       });
     }
 
     res.json({
       success: true,
-      message: "Language deleted successfully"
+      message: "Language deleted successfully",
     });
-
   } catch (error) {
     next(error);
   }
 };
 
-// =========================================
-// CREATE HOBBY
-// =========================================
+// ============================================================
+// HOBBIES
+// ============================================================
 
-const createHobby = async (req, res, next) => {
+// GET HOBBIES
+const getHobbies = async (
+  req,
+  res,
+  next
+) => {
+  try {
+    const [hobbies] = await pool.query(
+      `SELECT *
+       FROM hobbies
+       ORDER BY id ASC`
+    );
+
+    res.json({
+      success: true,
+      data: hobbies,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// CREATE HOBBY
+const createHobby = async (
+  req,
+  res,
+  next
+) => {
   try {
     const {
-      hobby_name
+      hobby_name,
     } = req.body;
 
-    if (!hobby_name) {
+    if (
+      !hobby_name ||
+      !hobby_name.trim()
+    ) {
       return res.status(400).json({
         success: false,
-        message: "Hobby name is required"
+        message: "Hobby name is required",
       });
     }
 
@@ -922,25 +1219,87 @@ const createHobby = async (req, res, next) => {
       `INSERT INTO hobbies
        (hobby_name)
        VALUES (?)`,
-      [hobby_name]
+      [hobby_name.trim()]
     );
+
+    const [newHobby] =
+      await pool.query(
+        "SELECT * FROM hobbies WHERE id = ?",
+        [result.insertId]
+      );
 
     res.status(201).json({
       success: true,
       message: "Hobby added successfully",
-      id: result.insertId
+      data: newHobby[0],
     });
-
   } catch (error) {
     next(error);
   }
 };
 
-// =========================================
-// DELETE HOBBY
-// =========================================
+// UPDATE HOBBY
+const updateHobby = async (
+  req,
+  res,
+  next
+) => {
+  try {
+    const { id } = req.params;
 
-const deleteHobby = async (req, res, next) => {
+    const {
+      hobby_name,
+    } = req.body;
+
+    if (
+      !hobby_name ||
+      !hobby_name.trim()
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Hobby name is required",
+      });
+    }
+
+    const [result] = await pool.query(
+      `UPDATE hobbies
+       SET hobby_name = ?
+       WHERE id = ?`,
+      [
+        hobby_name.trim(),
+        id,
+      ]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Hobby not found",
+      });
+    }
+
+    const [updatedHobby] =
+      await pool.query(
+        "SELECT * FROM hobbies WHERE id = ?",
+        [id]
+      );
+
+    res.json({
+      success: true,
+      message: "Hobby updated successfully",
+      data: updatedHobby[0],
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// DELETE HOBBY
+const deleteHobby = async (
+  req,
+  res,
+  next
+) => {
   try {
     const { id } = req.params;
 
@@ -952,25 +1311,59 @@ const deleteHobby = async (req, res, next) => {
     if (result.affectedRows === 0) {
       return res.status(404).json({
         success: false,
-        message: "Hobby not found"
+        message: "Hobby not found",
       });
     }
 
     res.json({
       success: true,
-      message: "Hobby deleted successfully"
+      message: "Hobby deleted successfully",
     });
-
   } catch (error) {
     next(error);
   }
 };
 
-// =========================================
-// UPDATE PERSONAL INFO
-// =========================================
+// ============================================================
+// PERSONAL INFORMATION
+// ============================================================
 
-const updatePersonalInfo = async (req, res, next) => {
+// GET PERSONAL INFORMATION
+const getPersonalInfo = async (
+  req,
+  res,
+  next
+) => {
+  try {
+    const [rows] = await pool.query(
+      `SELECT *
+       FROM personal_info
+       ORDER BY id DESC
+       LIMIT 1`
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Personal information not found",
+      });
+    }
+
+    res.json({
+      success: true,
+      data: rows[0],
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// UPDATE PERSONAL INFORMATION
+const updatePersonalInfo = async (
+  req,
+  res,
+  next
+) => {
   try {
     const {
       name,
@@ -979,35 +1372,62 @@ const updatePersonalInfo = async (req, res, next) => {
       email,
       linkedin,
       location,
-      phone
+      phone,
     } = req.body;
 
     const [existing] = await pool.query(
-      "SELECT id FROM personal_info ORDER BY id DESC LIMIT 1"
+      `SELECT id
+       FROM personal_info
+       ORDER BY id DESC
+       LIMIT 1`
     );
+
+    // --------------------------------------------------------
+    // CREATE
+    // --------------------------------------------------------
 
     if (existing.length === 0) {
       const [result] = await pool.query(
         `INSERT INTO personal_info
-        (name, role, about, email, linkedin, location, phone)
-        VALUES (?, ?, ?, ?, ?, ?, ?)`,
+         (
+           name,
+           role,
+           about,
+           email,
+           linkedin,
+           location,
+           phone
+         )
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
         [
-          name,
-          role,
-          about,
-          email,
-          linkedin,
-          location,
-          phone
+          name || "",
+          role || "",
+          about || "",
+          email || "",
+          linkedin || "",
+          location || "",
+          phone || "",
         ]
       );
+
+      const [newInfo] =
+        await pool.query(
+          "SELECT * FROM personal_info WHERE id = ?",
+          [result.insertId]
+        );
 
       return res.status(201).json({
         success: true,
         message: "Personal information created",
-        id: result.insertId
+        data: newInfo[0],
       });
     }
+
+    // --------------------------------------------------------
+    // UPDATE
+    // --------------------------------------------------------
+
+    const id = existing[0].id;
 
     await pool.query(
       `UPDATE personal_info
@@ -1020,30 +1440,36 @@ const updatePersonalInfo = async (req, res, next) => {
            phone = ?
        WHERE id = ?`,
       [
-        name,
-        role,
-        about,
-        email,
-        linkedin,
-        location,
-        phone,
-        existing[0].id
+        name || "",
+        role || "",
+        about || "",
+        email || "",
+        linkedin || "",
+        location || "",
+        phone || "",
+        id,
       ]
     );
 
+    const [updatedInfo] =
+      await pool.query(
+        "SELECT * FROM personal_info WHERE id = ?",
+        [id]
+      );
+
     res.json({
       success: true,
-      message: "Personal information updated"
+      message: "Personal information updated",
+      data: updatedInfo[0],
     });
-
   } catch (error) {
     next(error);
   }
 };
 
-// =========================================
-// EXPORT ALL MODULES
-// =========================================
+// ============================================================
+// EXPORTS
+// ============================================================
 
 module.exports = {
   // Auth
@@ -1066,25 +1492,31 @@ module.exports = {
   createSkill,
   updateSkill,
   deleteSkill,
-  updateSkillsByCategory, // ← NEW: Bulk update
+  updateSkillsByCategory,
 
   // Certifications
+  getCertifications,
   createCertification,
   updateCertification,
   deleteCertification,
 
   // Languages
+  getLanguages,
   createLanguage,
+  updateLanguage,
   deleteLanguage,
 
   // Hobbies
+  getHobbies,
   createHobby,
+  updateHobby,
   deleteHobby,
 
-  // Personal Info
+  // Personal
+  getPersonalInfo,
   updatePersonalInfo,
 
-  // Image Upload
+  // Upload
   upload,
-  uploadImage
+  uploadImage,
 };

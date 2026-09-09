@@ -4,6 +4,41 @@ const router = express.Router();
 
 const { pool } = require("../config/database");
 
+// =====================================================
+// SKILL CATEGORIES
+// =====================================================
+
+const SKILL_CATEGORIES = {
+  languages: [],
+  frontend: [],
+  backend: [],
+  database: [],
+  tools: [],
+  coreSubjects: [],
+};
+
+// =====================================================
+// FORMAT SKILLS
+// =====================================================
+
+const formatSkills = (rows) => {
+  const skills = {
+    languages: [],
+    frontend: [],
+    backend: [],
+    database: [],
+    tools: [],
+    coreSubjects: [],
+  };
+
+  rows.forEach((skill) => {
+    if (skills[skill.category]) {
+      skills[skill.category].push(skill.skill_name);
+    }
+  });
+
+  return skills;
+};
 
 // =====================================================
 // GET COMPLETE PORTFOLIO
@@ -11,133 +46,90 @@ const { pool } = require("../config/database");
 
 router.get("/", async (req, res, next) => {
   try {
-
     // -----------------------------------------------
-    // Personal Information
+    // PERSONAL INFORMATION
     // -----------------------------------------------
 
-    const [personalRows] = await pool.query(
-      `
+    const [personalRows] = await pool.query(`
       SELECT *
       FROM personal_info
       ORDER BY id DESC
       LIMIT 1
-      `
-    );
-
+    `);
 
     // -----------------------------------------------
-    // Projects
+    // PROJECTS
     // -----------------------------------------------
 
-    const [projectRows] = await pool.query(
-      `
+    const [projectRows] = await pool.query(`
       SELECT *
       FROM projects
       ORDER BY id DESC
-      `
-    );
-
+    `);
 
     // -----------------------------------------------
-    // Education
+    // EDUCATION
     // -----------------------------------------------
 
-    const [educationRows] = await pool.query(
-      `
+    const [educationRows] = await pool.query(`
       SELECT *
       FROM education
       ORDER BY id DESC
-      `
-    );
-
+    `);
 
     // -----------------------------------------------
-    // Skills
+    // SKILLS
     // -----------------------------------------------
 
-    const [skillRows] = await pool.query(
-      `
+    const [skillRows] = await pool.query(`
       SELECT *
       FROM skills
       ORDER BY id ASC
-      `
-    );
-
+    `);
 
     // -----------------------------------------------
-    // Certifications
+    // CERTIFICATIONS
     // -----------------------------------------------
 
-    const [certificationRows] = await pool.query(
-      `
+    const [certificationRows] = await pool.query(`
       SELECT *
       FROM certifications
       ORDER BY id DESC
-      `
-    );
-
+    `);
 
     // -----------------------------------------------
-    // Languages
+    // LANGUAGES
     // -----------------------------------------------
 
-    const [languageRows] = await pool.query(
-      `
+    const [languageRows] = await pool.query(`
       SELECT *
       FROM languages
       ORDER BY id ASC
-      `
-    );
-
+    `);
 
     // -----------------------------------------------
-    // Hobbies
+    // HOBBIES
     // -----------------------------------------------
 
-    const [hobbyRows] = await pool.query(
-      `
+    const [hobbyRows] = await pool.query(`
       SELECT *
       FROM hobbies
       ORDER BY id ASC
-      `
-    );
+    `);
 
-
-    // =================================================
+    // -----------------------------------------------
     // FORMAT SKILLS
-    // =================================================
+    // -----------------------------------------------
 
-    const skills = {
-      languages: [],
-      frontend: [],
-      backend: [],
-      database: [],
-      tools: [],
-      coreSubjects: []
-    };
+    const skills = formatSkills(skillRows);
 
-
-    skillRows.forEach((skill) => {
-
-      if (skills[skill.category]) {
-        skills[skill.category].push(
-          skill.skill_name
-        );
-      }
-
-    });
-
-
-    // =================================================
-    // RESPONSE
-    // =================================================
+    // -----------------------------------------------
+    // FINAL RESPONSE
+    // -----------------------------------------------
 
     res.status(200).json({
       success: true,
-
       data: {
-
         personalInfo:
           personalRows.length > 0
             ? personalRows[0]
@@ -149,22 +141,16 @@ router.get("/", async (req, res, next) => {
 
         skills,
 
-        certifications:
-          certificationRows,
+        certifications: certificationRows,
 
-        languages:
-          languageRows,
+        languages: languageRows,
 
-        hobbies:
-          hobbyRows
-
-      }
+        hobbies: hobbyRows,
+      },
     });
-
   } catch (error) {
-
     console.error(
-      "❌ Error fetching portfolio:",
+      "❌ Error fetching complete portfolio:",
       error
     );
 
@@ -172,253 +158,212 @@ router.get("/", async (req, res, next) => {
   }
 });
 
-
 // =====================================================
 // GET PROJECTS
+// GET /api/portfolio/projects
 // =====================================================
 
 router.get("/projects", async (req, res, next) => {
-
   try {
-
-    const [rows] = await pool.query(
-      `
+    const [rows] = await pool.query(`
       SELECT *
       FROM projects
       ORDER BY id DESC
-      `
+    `);
+
+    res.status(200).json({
+      success: true,
+      data: rows,
+    });
+  } catch (error) {
+    console.error(
+      "❌ Error fetching projects:",
+      error
     );
 
-    res.json({
-      success: true,
-      data: rows
-    });
-
-  } catch (error) {
-
     next(error);
-
   }
-
 });
-
 
 // =====================================================
 // GET EDUCATION
+// GET /api/portfolio/education
 // =====================================================
 
 router.get("/education", async (req, res, next) => {
-
   try {
-
-    const [rows] = await pool.query(
-      `
+    const [rows] = await pool.query(`
       SELECT *
       FROM education
       ORDER BY id DESC
-      `
+    `);
+
+    res.status(200).json({
+      success: true,
+      data: rows,
+    });
+  } catch (error) {
+    console.error(
+      "❌ Error fetching education:",
+      error
     );
 
-    res.json({
-      success: true,
-      data: rows
-    });
-
-  } catch (error) {
-
     next(error);
-
   }
-
 });
-
 
 // =====================================================
 // GET SKILLS
+// GET /api/portfolio/skills
 // =====================================================
 
 router.get("/skills", async (req, res, next) => {
-
   try {
-
-    const [rows] = await pool.query(
-      `
+    const [rows] = await pool.query(`
       SELECT *
       FROM skills
       ORDER BY id ASC
-      `
+    `);
+
+    const skills = formatSkills(rows);
+
+    res.status(200).json({
+      success: true,
+      data: skills,
+    });
+  } catch (error) {
+    console.error(
+      "❌ Error fetching skills:",
+      error
     );
 
-    const skills = {
-      languages: [],
-      frontend: [],
-      backend: [],
-      database: [],
-      tools: [],
-      coreSubjects: []
-    };
-
-    rows.forEach((skill) => {
-
-      if (skills[skill.category]) {
-
-        skills[skill.category].push(
-          skill.skill_name
-        );
-
-      }
-
-    });
-
-    res.json({
-      success: true,
-      data: skills
-    });
-
-  } catch (error) {
-
     next(error);
-
   }
-
 });
-
 
 // =====================================================
 // GET CERTIFICATIONS
+// GET /api/portfolio/certifications
 // =====================================================
 
 router.get(
   "/certifications",
   async (req, res, next) => {
-
     try {
-
-      const [rows] = await pool.query(
-        `
+      const [rows] = await pool.query(`
         SELECT *
         FROM certifications
         ORDER BY id DESC
-        `
+      `);
+
+      res.status(200).json({
+        success: true,
+        data: rows,
+      });
+    } catch (error) {
+      console.error(
+        "❌ Error fetching certifications:",
+        error
       );
 
-      res.json({
-        success: true,
-        data: rows
-      });
-
-    } catch (error) {
-
       next(error);
-
     }
-
   }
 );
 
-
 // =====================================================
 // GET LANGUAGES
+// GET /api/portfolio/languages
 // =====================================================
 
 router.get(
   "/languages",
   async (req, res, next) => {
-
     try {
-
-      const [rows] = await pool.query(
-        `
+      const [rows] = await pool.query(`
         SELECT *
         FROM languages
         ORDER BY id ASC
-        `
+      `);
+
+      res.status(200).json({
+        success: true,
+        data: rows,
+      });
+    } catch (error) {
+      console.error(
+        "❌ Error fetching languages:",
+        error
       );
 
-      res.json({
-        success: true,
-        data: rows
-      });
-
-    } catch (error) {
-
       next(error);
-
     }
-
   }
 );
 
-
 // =====================================================
 // GET HOBBIES
+// GET /api/portfolio/hobbies
 // =====================================================
 
 router.get(
   "/hobbies",
   async (req, res, next) => {
-
     try {
-
-      const [rows] = await pool.query(
-        `
+      const [rows] = await pool.query(`
         SELECT *
         FROM hobbies
         ORDER BY id ASC
-        `
+      `);
+
+      res.status(200).json({
+        success: true,
+        data: rows,
+      });
+    } catch (error) {
+      console.error(
+        "❌ Error fetching hobbies:",
+        error
       );
 
-      res.json({
-        success: true,
-        data: rows
-      });
-
-    } catch (error) {
-
       next(error);
-
     }
-
   }
 );
 
-
 // =====================================================
 // GET PERSONAL INFORMATION
+// GET /api/portfolio/personal
 // =====================================================
 
 router.get(
   "/personal",
   async (req, res, next) => {
-
     try {
-
-      const [rows] = await pool.query(
-        `
+      const [rows] = await pool.query(`
         SELECT *
         FROM personal_info
         ORDER BY id DESC
         LIMIT 1
-        `
-      );
+      `);
 
-      res.json({
+      res.status(200).json({
         success: true,
         data:
           rows.length > 0
             ? rows[0]
-            : null
+            : null,
       });
-
     } catch (error) {
+      console.error(
+        "❌ Error fetching personal information:",
+        error
+      );
 
       next(error);
-
     }
-
   }
 );
-
 
 // =====================================================
 // EXPORT ROUTER
