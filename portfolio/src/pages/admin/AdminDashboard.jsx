@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 
 import API from "../../services/api";
 import AdminSidebar from "../../components/admin/AdminSidebar";
-import ThemeSwitcher from "../../components/ThemeSwitcher";
 import { useTheme } from "../../context/ThemeContext";
 
 export default function AdminDashboard() {
@@ -187,7 +186,17 @@ export default function AdminDashboard() {
           </div>
           
           <div className="flex gap-3 items-center">
-            <ThemeSwitcher />
+            <button
+              onClick={() => navigate("/admin/theme")}
+              className="flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-medium transition hover:bg-white/10"
+              style={{
+                borderColor: themeColors?.border || 'rgba(255,255,255,0.1)',
+                color: themeColors?.text || '#ffffff',
+              }}
+            >
+              <span>🎨</span>
+              <span>Theme Settings</span>
+            </button>
             <button
               onClick={() => window.open("/", "_blank")}
               className="rounded-xl border border-white/10 px-4 py-2 text-sm text-white/70 transition hover:bg-white/10"
@@ -348,10 +357,19 @@ export default function AdminDashboard() {
             />
 
             <QuickAction
-              icon="🎨"
+              icon="🎯"
               title="Manage Hobbies"
               description="Add or remove hobbies"
               onClick={() => navigate("/admin/hobbies")}
+              themeColors={themeColors}
+              themeColor={getThemeColor()}
+            />
+
+            <QuickAction
+              icon="🎨"
+              title="Website Theme"
+              description="Choose global website theme"
+              onClick={() => navigate("/admin/theme")}
               themeColors={themeColors}
               themeColor={getThemeColor()}
             />

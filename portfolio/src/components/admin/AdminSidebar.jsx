@@ -45,6 +45,11 @@ export default function AdminSidebar() {
     {
       name: "Hobbies",
       path: "/admin/hobbies",
+      icon: "🎯",
+    },
+    {
+      name: "Website Theme",
+      path: "/admin/theme",
       icon: "🎨",
     },
   ];
@@ -160,12 +165,15 @@ export default function AdminSidebar() {
         </button>
 
         {/* Theme indicator */}
-        <div className="mt-3 flex items-center justify-between px-1">
+        <button
+          onClick={() => navigate("/admin/theme")}
+          className="mt-3 flex w-full items-center justify-between rounded-lg px-2 py-1.5 transition hover:bg-white/5"
+        >
           <span 
             className="text-xs"
-            style={{ color: themeColors?.textSecondary || 'rgba(255,255,255,0.3)' }}
+            style={{ color: themeColors?.textSecondary || 'rgba(255,255,255,0.4)' }}
           >
-            Theme
+            🎨 Theme
           </span>
           <div 
             className="flex items-center gap-2"
@@ -178,13 +186,13 @@ export default function AdminSidebar() {
               }}
             />
             <span 
-              className="text-xs capitalize"
-              style={{ color: themeColors?.textSecondary || 'rgba(255,255,255,0.4)' }}
+              className="text-xs capitalize font-medium"
+              style={{ color: themeColors?.primary || '#3b82f6' }}
             >
-              {currentTheme || 'blue'}
+              {currentTheme || 'purple'}
             </span>
           </div>
-        </div>
+        </button>
       </div>
     </aside>
   );

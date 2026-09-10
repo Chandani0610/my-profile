@@ -11,6 +11,7 @@ import AdminCertifications from './pages/admin/AdminCertifications';
 import AdminLanguages from './pages/admin/AdminLanguages';
 import AdminHobbies from './pages/admin/AdminHobbies';
 import AdminPersonal from './pages/admin/AdminPersonal';
+import AdminTheme from './pages/admin/AdminTheme';
 
 function App() {
   return (
@@ -30,6 +31,7 @@ function App() {
           <Route path="/admin/languages" element={<AdminLanguages />} />
           <Route path="/admin/hobbies" element={<AdminHobbies />} />
           <Route path="/admin/personal" element={<AdminPersonal />} />
+          <Route path="/admin/theme" element={<AdminTheme />} />
 
           {/* Unknown route */}
           <Route path="*" element={<Navigate to="/" replace />} />

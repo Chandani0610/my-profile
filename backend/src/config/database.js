@@ -74,6 +74,21 @@ const testConnection = async () => {
     console.log(`🔐 SSL: ${process.env.DB_SSL === "true" ? "Enabled" : "Disabled"}`);
     console.log("=================================");
 
+    // Ensure settings table exists
+    await connection.query(`
+      CREATE TABLE IF NOT EXISTS portfolio_settings (
+        id INT PRIMARY KEY AUTO_INCREMENT,
+        setting_key VARCHAR(100) NOT NULL UNIQUE,
+        setting_value TEXT NOT NULL,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      );
+    `);
+    await connection.query(`
+      INSERT INTO portfolio_settings (setting_key, setting_value)
+      VALUES ('theme', 'purple')
+      ON DUPLICATE KEY UPDATE setting_value = setting_value;
+    `);
+
     connection.release();
   } catch (error) {
     console.error("=================================");

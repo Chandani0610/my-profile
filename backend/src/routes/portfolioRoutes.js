@@ -47,6 +47,22 @@ const formatSkills = (rows) => {
 router.get("/", async (req, res, next) => {
   try {
     // -----------------------------------------------
+    // THEME SETTING
+    // -----------------------------------------------
+
+    let theme = "purple";
+    try {
+      const [themeRows] = await pool.query(`
+        SELECT setting_value FROM portfolio_settings WHERE setting_key = 'theme' LIMIT 1
+      `);
+      if (themeRows.length > 0 && themeRows[0].setting_value) {
+        theme = themeRows[0].setting_value;
+      }
+    } catch {
+      theme = "purple";
+    }
+
+    // -----------------------------------------------
     // PERSONAL INFORMATION
     // -----------------------------------------------
 
@@ -139,6 +155,8 @@ router.get("/", async (req, res, next) => {
     res.status(200).json({
       success: true,
       data: {
+        theme,
+
         personalInfo:
           personalRows.length > 0
             ? personalRows[0]
@@ -382,6 +400,30 @@ router.get(
         error
       );
 
+      next(error);
+    }
+  }
+);
+
+// =====================================================
+// GET CURRENT THEME
+// GET /api/portfolio/theme
+// =====================================================
+
+router.get(
+  "/theme",
+  async (req, res, next) => {
+    try {
+      const [rows] = await pool.query(
+        "SELECT setting_value FROM portfolio_settings WHERE setting_key = 'theme' LIMIT 1"
+      );
+      const theme = rows.length > 0 ? rows[0].setting_value : "purple";
+      res.status(200).json({
+        success: true,
+        theme,
+      });
+    } catch (error) {
+      console.error("❌ Error fetching theme:", error);
       next(error);
     }
   }

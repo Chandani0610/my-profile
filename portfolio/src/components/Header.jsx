@@ -2,7 +2,6 @@
 import { useState } from "react";
 import profileImage from "../assets/photo (2).jpg";
 import resumeData from "../data/resumeData";
-import ThemeSwitcher from "./ThemeSwitcher";
 import { useTheme } from "../context/ThemeContext";
 
 export default function Header() {
@@ -108,9 +107,6 @@ export default function Header() {
               </li>
             ))}
             
-            <li>
-              <ThemeSwitcher />
-            </li>
             <li>
               <button 
                 onClick={() => scrollToSection("contact")}
@@ -221,19 +217,6 @@ export default function Header() {
               </button>
             ))}
             
-            {/* Theme Section - Mobile */}
-            <div className="mt-2 border-t pt-3" style={{ borderColor: themeColors.border }}>
-              <div className="flex items-center justify-between">
-                <span 
-                  className="text-sm font-medium"
-                  style={{ color: themeColors.text }}
-                >
-                  🎨 Theme
-                </span>
-                <ThemeSwitcher />
-              </div>
-            </div>
-
             <button 
               onClick={() => scrollToSection("contact")}
               className="

@@ -10,6 +10,7 @@ const { testConnection } = require("./config/database");
 
 const portfolioRoutes = require("./routes/portfolioRoutes");
 const adminRoutes = require("./routes/adminRoutes");
+const themeRoutes = require("./routes/themeRoutes");
 
 const errorHandler = require("./middleware/errorHandler");
 
@@ -249,6 +250,14 @@ app.use(
   "/api/admin",
   adminRoutes
 );
+
+// =====================================================
+// THEME ROUTES
+// =====================================================
+// GET /api/theme
+// PUT /api/theme
+app.use("/api/theme", themeRoutes);
+app.use("/api/admin/theme", themeRoutes);
 
 // =====================================================
 // 404 ROUTE
