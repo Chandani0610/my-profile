@@ -43,56 +43,72 @@ export default function AdminDashboard() {
     const loadDashboard = async () => {
       try {
         setLoading(true);
-        
-        const [adminResponse, portfolioResponse] = await Promise.all([
-          API.get("/admin/me", {
-            signal: abortController.signal
-          }),
-          API.get("/portfolio", {
-            signal: abortController.signal
-          }),
-        ]);
 
-        // Check admin authentication
-        if (!adminResponse.data.success) {
-          navigate("/admin");
-          return;
+        // 1. Fetch portfolio stats
+        try {
+          const portfolioResponse = await API.get("/portfolio", {
+            signal: abortController.signal,
+          });
+
+          if (portfolioResponse.data?.success) {
+            const data = portfolioResponse.data.data || {};
+            setPortfolio(data);
+
+            const projectCount = Array.isArray(data.projects) ? data.projects.length : 0;
+            const educationCount = Array.isArray(data.education) ? data.education.length : 0;
+            const certificationCount = Array.isArray(data.certifications) ? data.certifications.length : 0;
+            const languageCount = Array.isArray(data.languages) ? data.languages.length : 0;
+            const hobbyCount = Array.isArray(data.hobbies) ? data.hobbies.length : 0;
+
+            let skillCount = 0;
+            if (Array.isArray(data.skills)) {
+              skillCount = data.skills.length;
+            } else if (data.skills && typeof data.skills === "object") {
+              skillCount = Object.values(data.skills).reduce(
+                (total, skills) => total + (Array.isArray(skills) ? skills.length : 0),
+                0
+              );
+            }
+
+            setStats({
+              projects: projectCount,
+              education: educationCount,
+              skills: skillCount,
+              certifications: certificationCount,
+              languages: languageCount,
+              hobbies: hobbyCount,
+            });
+          }
+        } catch (portfolioErr) {
+          if (portfolioErr.name !== "AbortError") {
+            console.error("Failed to load portfolio stats:", portfolioErr);
+          }
         }
 
-        setAdmin(adminResponse.data.admin);
-
-        // Load portfolio data
-        if (portfolioResponse.data.success) {
-          const data = portfolioResponse.data.data;
-          setPortfolio(data); // ✅ Now this will work
-
-          // Calculate statistics
-          const projectCount = data.projects?.length || 0;
-          const educationCount = data.education?.length || 0;
-          const certificationCount = data.certifications?.length || 0;
-          const languageCount = data.languages?.length || 0;
-          const hobbyCount = data.hobbies?.length || 0;
-
-          const skillCount = Object.values(data.skills || {}).reduce(
-            (total, skills) => total + (Array.isArray(skills) ? skills.length : 0),
-            0
-          );
-
-          setStats({
-            projects: projectCount,
-            education: educationCount,
-            skills: skillCount,
-            certifications: certificationCount,
-            languages: languageCount,
-            hobbies: hobbyCount,
+        // 2. Check admin authentication
+        try {
+          const adminResponse = await API.get("/admin/me", {
+            signal: abortController.signal,
           });
+
+          if (adminResponse.data?.success) {
+            setAdmin(adminResponse.data.admin);
+          } else {
+            navigate("/admin");
+            return;
+          }
+        } catch (adminErr) {
+          if (adminErr.name !== "AbortError") {
+            console.warn("Admin session check:", adminErr?.message);
+            if (adminErr.response?.status === 401) {
+              navigate("/admin");
+              return;
+            }
+          }
         }
       } catch (error) {
         if (error.name !== 'AbortError') {
           console.error("Failed to load dashboard:", error);
-          if (error.response?.status === 401) {
-            navigate("/admin");
-          }
         }
       } finally {
         if (!abortController.signal.aborted) {

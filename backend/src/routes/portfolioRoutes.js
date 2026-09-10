@@ -92,7 +92,8 @@ router.get("/", async (req, res, next) => {
     // -----------------------------------------------
 
     const [certificationRows] = await pool.query(`
-      SELECT *
+      SELECT *,
+             name AS certification_name
       FROM certifications
       ORDER BY id DESC
     `);

@@ -6,7 +6,11 @@ import AdminSidebar from "../../components/admin/AdminSidebar";
 import { useTheme } from "../../context/ThemeContext";
 
 const emptyCert = {
-  certification_name: "", // Changed from 'name' to match database column
+  certification_name: "",
+  name: "",
+  issuer: "",
+  credential: "",
+  image: "",
 };
 
 export default function AdminCertifications() {
@@ -70,7 +74,11 @@ export default function AdminCertifications() {
         let certs = response.data.data || [];
         
         if (Array.isArray(certs)) {
-          certs = certs.filter(cert => cert != null);
+          certs = certs.filter(cert => cert != null).map(cert => ({
+            ...cert,
+            name: cert.name || cert.certification_name || "",
+            certification_name: cert.certification_name || cert.name || "",
+          }));
         } else {
           certs = [];
         }
@@ -200,7 +208,8 @@ export default function AdminCertifications() {
 
   // CREATE - Add new certification
   const handleCreate = async () => {
-    if (!form.certification_name?.trim()) {
+    const certTitle = (form.certification_name || form.name || "").trim();
+    if (!certTitle) {
       showMessage("⚠️ Please enter a certification name.", "warning");
       return false;
     }
@@ -209,7 +218,15 @@ export default function AdminCertifications() {
     setMessage("");
 
     try {
-      const response = await API.post("/admin/certifications", form);
+      const payload = {
+        name: certTitle,
+        certification_name: certTitle,
+        issuer: form.issuer?.trim() || "Self",
+        credential: form.credential?.trim() || "",
+        image: form.image || "",
+      };
+
+      const response = await API.post("/admin/certifications", payload);
       
       if (response.data.success) {
         showMessage("✅ Certification added successfully!", "success");
@@ -231,7 +248,8 @@ export default function AdminCertifications() {
 
   // UPDATE - Edit existing certification
   const handleUpdate = async () => {
-    if (!form.certification_name?.trim()) {
+    const certTitle = (form.certification_name || form.name || "").trim();
+    if (!certTitle) {
       showMessage("⚠️ Please enter a certification name.", "warning");
       return false;
     }
@@ -240,7 +258,15 @@ export default function AdminCertifications() {
     setMessage("");
 
     try {
-      const response = await API.put(`/admin/certifications/${editingId}`, form);
+      const payload = {
+        name: certTitle,
+        certification_name: certTitle,
+        issuer: form.issuer?.trim() || "Self",
+        credential: form.credential?.trim() || "",
+        image: form.image || "",
+      };
+
+      const response = await API.put(`/admin/certifications/${editingId}`, payload);
       
       if (response.data.success) {
         showMessage("✅ Certification updated successfully!", "success");
@@ -327,8 +353,12 @@ export default function AdminCertifications() {
     if (!item) return;
 
     try {
+      const title = item.certification_name || item.name || "Certification";
       const duplicateData = {
-        certification_name: `${item.certification_name} (Copy)`,
+        name: `${title} (Copy)`,
+        certification_name: `${title} (Copy)`,
+        issuer: item.issuer || "Self",
+        credential: item.credential || "",
         image: item.image || "",
       };
 
@@ -366,7 +396,10 @@ export default function AdminCertifications() {
     
     setEditingId(item.id);
     setForm({
-      certification_name: item.certification_name || "",
+      certification_name: item.certification_name || item.name || "",
+      name: item.name || item.certification_name || "",
+      issuer: item.issuer || "",
+      credential: item.credential || "",
       image: item.image || "",
     });
     if (item.image) {
@@ -394,13 +427,15 @@ export default function AdminCertifications() {
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
       filtered = filtered.filter(cert => 
-        cert.certification_name?.toLowerCase().includes(term)
+        (cert.certification_name || cert.name || "")?.toLowerCase().includes(term) ||
+        (cert.issuer || "")?.toLowerCase().includes(term) ||
+        (cert.credential || "")?.toLowerCase().includes(term)
       );
     }
 
     filtered.sort((a, b) => {
-      const aVal = (a[sortBy] || "").toString().toLowerCase();
-      const bVal = (b[sortBy] || "").toString().toLowerCase();
+      const aVal = (a[sortBy] || a.certification_name || a.name || "").toString().toLowerCase();
+      const bVal = (b[sortBy] || b.certification_name || b.name || "").toString().toLowerCase();
       if (sortOrder === "asc") {
         return aVal.localeCompare(bVal);
       } else {
@@ -610,7 +645,7 @@ export default function AdminCertifications() {
               <input
                 type="text"
                 name="certification_name"
-                value={form.certification_name}
+                value={form.certification_name || form.name || ""}
                 onChange={handleChange}
                 placeholder="e.g., AWS Certified Developer, NPTEL - DBMS"
                 required
@@ -629,6 +664,62 @@ export default function AdminCertifications() {
                   e.currentTarget.style.boxShadow = 'none';
                 }}
               />
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <label className="mb-2 block text-sm" style={{ color: themeColors?.textSecondary || 'rgba(255,255,255,0.7)' }}>
+                  Issuing Organization
+                </label>
+                <input
+                  type="text"
+                  name="issuer"
+                  value={form.issuer || ""}
+                  onChange={handleChange}
+                  placeholder="e.g., HackerRank, NPTEL, Coursera"
+                  className="w-full rounded-xl border px-4 py-3 outline-none transition placeholder:text-gray-400 focus:ring-2"
+                  style={{
+                    borderColor: '#d1d5db',
+                    backgroundColor: '#ffffff',
+                    color: '#1f2937',
+                  }}
+                  onFocus={(e) => {
+                    e.currentTarget.style.borderColor = getThemeColor();
+                    e.currentTarget.style.boxShadow = `0 0 0 3px ${getThemeColor()}30`;
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.borderColor = '#d1d5db';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }}
+                />
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm" style={{ color: themeColors?.textSecondary || 'rgba(255,255,255,0.7)' }}>
+                  Credential ID (Optional)
+                </label>
+                <input
+                  type="text"
+                  name="credential"
+                  value={form.credential || ""}
+                  onChange={handleChange}
+                  placeholder="e.g., FBCED9F0E3A3"
+                  className="w-full rounded-xl border px-4 py-3 outline-none transition placeholder:text-gray-400 focus:ring-2"
+                  style={{
+                    borderColor: '#d1d5db',
+                    backgroundColor: '#ffffff',
+                    color: '#1f2937',
+                  }}
+                  onFocus={(e) => {
+                    e.currentTarget.style.borderColor = getThemeColor();
+                    e.currentTarget.style.boxShadow = `0 0 0 3px ${getThemeColor()}30`;
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.borderColor = '#d1d5db';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }}
+                />
+              </div>
             </div>
 
             {/* Image Upload Section - Supports all formats */}
@@ -934,8 +1025,18 @@ export default function AdminCertifications() {
                               )}
                               <div className={viewMode === "grid" ? "mt-2" : ""}>
                                 <h3 className="text-lg font-semibold text-gray-900">
-                                  {item.certification_name || "Untitled Certification"}
+                                  {item.certification_name || item.name || "Untitled Certification"}
                                 </h3>
+                                {item.issuer && (
+                                  <p className="text-sm font-medium text-gray-600 mt-0.5">
+                                    🏢 {item.issuer}
+                                  </p>
+                                )}
+                                {item.credential && (
+                                  <p className="text-xs text-gray-400 mt-0.5">
+                                    ID: {item.credential}
+                                  </p>
+                                )}
                               </div>
                             </div>
                           </div>

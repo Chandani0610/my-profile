@@ -789,7 +789,8 @@ const getCertifications = async (
 ) => {
   try {
     const [certifications] = await pool.query(
-      `SELECT *
+      `SELECT *,
+              name AS certification_name
        FROM certifications
        ORDER BY id DESC`
     );
@@ -811,25 +812,19 @@ const createCertification = async (
 ) => {
   try {
     const {
-      name,
-      issuer,
       credential,
       url,
       image,
       description,
     } = req.body;
 
-    if (!name || !name.trim()) {
+    const certName = (req.body.name || req.body.certification_name || "").trim();
+    const certIssuer = (req.body.issuer || "Self").trim();
+
+    if (!certName) {
       return res.status(400).json({
         success: false,
         message: "Certification name is required",
-      });
-    }
-
-    if (!issuer || !issuer.trim()) {
-      return res.status(400).json({
-        success: false,
-        message: "Certification issuer is required",
       });
     }
 
@@ -838,8 +833,8 @@ const createCertification = async (
        (name, issuer, credential, url, image, description)
        VALUES (?, ?, ?, ?, ?, ?)`,
       [
-        name.trim(),
-        issuer.trim(),
+        certName,
+        certIssuer,
         credential?.trim() || null,
         url?.trim() || null,
         image?.trim() || null,
@@ -849,7 +844,7 @@ const createCertification = async (
 
     const [newCertification] =
       await pool.query(
-        `SELECT *
+        `SELECT *, name AS certification_name
          FROM certifications
          WHERE id = ?`,
         [result.insertId]
@@ -874,29 +869,6 @@ const updateCertification = async (
   try {
     const { id } = req.params;
 
-    const {
-      name,
-      issuer,
-      credential,
-      url,
-      image,
-      description,
-    } = req.body;
-
-    if (!name || !name.trim()) {
-      return res.status(400).json({
-        success: false,
-        message: "Certification name is required",
-      });
-    }
-
-    if (!issuer || !issuer.trim()) {
-      return res.status(400).json({
-        success: false,
-        message: "Certification issuer is required",
-      });
-    }
-
     const [existing] = await pool.query(
       `SELECT *
        FROM certifications
@@ -911,10 +883,20 @@ const updateCertification = async (
       });
     }
 
+    const certName = (req.body.name || req.body.certification_name || existing[0].name || "").trim();
+    const certIssuer = (req.body.issuer || existing[0].issuer || "Self").trim();
+    const credential = req.body.credential !== undefined ? (req.body.credential?.trim() || null) : existing[0].credential;
+    const url = req.body.url !== undefined ? (req.body.url?.trim() || null) : existing[0].url;
+    const description = req.body.description !== undefined ? (req.body.description?.trim() || null) : existing[0].description;
     const oldImage = existing[0].image;
+    const newImage = req.body.image !== undefined ? (req.body.image?.trim() || null) : oldImage;
 
-    const newImage =
-      image?.trim() || null;
+    if (!certName) {
+      return res.status(400).json({
+        success: false,
+        message: "Certification name is required",
+      });
+    }
 
     await pool.query(
       `UPDATE certifications
@@ -926,12 +908,12 @@ const updateCertification = async (
            description = ?
        WHERE id = ?`,
       [
-        name.trim(),
-        issuer.trim(),
-        credential?.trim() || null,
-        url?.trim() || null,
+        certName,
+        certIssuer,
+        credential,
+        url,
         newImage,
-        description?.trim() || null,
+        description,
         id,
       ]
     );
@@ -947,7 +929,7 @@ const updateCertification = async (
 
     const [updatedCertification] =
       await pool.query(
-        `SELECT *
+        `SELECT *, name AS certification_name
          FROM certifications
          WHERE id = ?`,
         [id]
