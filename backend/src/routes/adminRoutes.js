@@ -10,6 +10,7 @@ const {
   loginAdmin,
   logoutAdmin,
   getCurrentAdmin,
+  getDashboardStats,
 
   // =====================================================
   // PROJECTS
@@ -85,6 +86,10 @@ router.post("/logout", logoutAdmin);
 
 // Get Current Logged-in Admin
 router.get("/me", getCurrentAdmin);
+
+// Dashboard Statistics (Fast COUNT)
+router.get("/stats", getDashboardStats);
+router.get("/dashboard/stats", getDashboardStats);
 
 // =====================================================
 // PROJECTS

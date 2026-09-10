@@ -22,6 +22,7 @@ export default function AdminProjects() {
   const [form, setForm] = useState(emptyProject);
   const [editingId, setEditingId] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
+  const [searchTerm, setSearchTerm] = useState("");
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -41,35 +42,40 @@ export default function AdminProjects() {
     return themeColorSwatches[currentTheme] || themeColorSwatches.blue;
   };
 
-  useEffect(() => {
-    const abortController = new AbortController();
-
-    const loadProjects = async () => {
+  const loadProjects = async () => {
+    try {
+      setLoading(true);
+      let projectList = [];
       try {
-        setLoading(true);
-        const response = await API.get("/portfolio", {
-          signal: abortController.signal
-        });
+        const response = await API.get("/admin/projects");
+        if (response.data?.success && Array.isArray(response.data.data)) {
+          projectList = response.data.data;
+        }
+      } catch {
+        // fallback to /portfolio
+      }
 
-        if (response.data.success) {
-          setProjects(response.data.data.projects || []);
-        }
-      } catch (error) {
-        if (error.name !== 'AbortError') {
-          console.error("Failed to load projects:", error);
-        }
-      } finally {
-        if (!abortController.signal.aborted) {
-          setLoading(false);
+      if (projectList.length === 0) {
+        try {
+          const pRes = await API.get("/portfolio");
+          if (pRes.data?.success && Array.isArray(pRes.data.data?.projects)) {
+            projectList = pRes.data.data.projects;
+          }
+        } catch (pErr) {
+          console.error("Failed to load projects from /portfolio:", pErr);
         }
       }
-    };
 
+      setProjects(projectList);
+    } catch (error) {
+      console.error("Failed to load projects:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     loadProjects();
-
-    return () => {
-      abortController.abort();
-    };
   }, []);
 
   const handleChange = (e) => {
@@ -87,23 +93,25 @@ export default function AdminProjects() {
     setMessage("");
 
     try {
+      const payload = {
+        ...form,
+        tech: form.tech || form.technologies || "",
+        technologies: form.tech || form.technologies || "",
+      };
+
       if (editingId) {
-        await API.put(`/admin/projects/${editingId}`, form);
+        await API.put(`/admin/projects/${editingId}`, payload);
         setMessage("✅ Project updated successfully.");
       } else {
-        await API.post("/admin/projects", form);
+        await API.post("/admin/projects", payload);
         setMessage("✅ Project created successfully.");
       }
 
       setForm(emptyProject);
       setEditingId(null);
 
-      const response = await API.get("/portfolio");
-      if (response.data.success) {
-        setProjects(response.data.data.projects || []);
-      }
-
-      setTimeout(() => setMessage(""), 3000);
+      await loadProjects();
+      setTimeout(() => setMessage(""), 4000);
     } catch (error) {
       setMessage(
         error.response?.data?.message || "❌ Something went wrong."
@@ -118,7 +126,7 @@ export default function AdminProjects() {
     setForm({
       title: project.title || "",
       icon: project.icon || "",
-      tech: project.tech || "",
+      tech: project.tech || project.technologies || "",
       description: project.description || "",
       github: project.github || "",
       demo: project.demo || "",
@@ -138,13 +146,8 @@ export default function AdminProjects() {
     try {
       await API.delete(`/admin/projects/${id}`);
       setMessage("✅ Project deleted successfully.");
-
-      const response = await API.get("/portfolio");
-      if (response.data.success) {
-        setProjects(response.data.data.projects || []);
-      }
-
-      setTimeout(() => setMessage(""), 3000);
+      await loadProjects();
+      setTimeout(() => setMessage(""), 4000);
     } catch (error) {
       setMessage(
         error.response?.data?.message || "❌ Failed to delete project."
@@ -158,6 +161,16 @@ export default function AdminProjects() {
     setEditingId(null);
     setForm(emptyProject);
   };
+
+  const filteredProjects = projects.filter((p) => {
+    if (!searchTerm.trim()) return true;
+    const term = searchTerm.toLowerCase();
+    return (
+      (p.title || "").toLowerCase().includes(term) ||
+      (p.tech || "").toLowerCase().includes(term) ||
+      (p.description || "").toLowerCase().includes(term)
+    );
+  });
 
   return (
     <div 
@@ -257,7 +270,7 @@ export default function AdminProjects() {
                 name="icon"
                 value={form.icon}
                 onChange={handleChange}
-                placeholder="💼"
+                placeholder="e.g., 💼, 💰, 🚀"
                 className="w-full rounded-xl border px-4 py-3 outline-none transition placeholder:text-gray-400 focus:ring-2"
                 style={{
                   borderColor: '#d1d5db',
@@ -273,6 +286,21 @@ export default function AdminProjects() {
                   e.currentTarget.style.boxShadow = 'none';
                 }}
               />
+              <div className="mt-2 flex flex-wrap gap-1.5 items-center">
+                <span className="text-xs text-gray-400 mr-1">Quick:</span>
+                {["💼", "💰", "📖", "🙏", "💻", "🚀", "📱", "🌐", "📊", "🎓"].map((ic) => (
+                  <button
+                    key={ic}
+                    type="button"
+                    onClick={() => setForm(prev => ({ ...prev, icon: ic }))}
+                    className={`h-7 w-7 rounded-lg text-sm transition hover:scale-110 flex items-center justify-center ${
+                      form.icon === ic ? 'bg-cyan-500/20 ring-1 ring-cyan-400' : 'bg-white/10 hover:bg-white/20'
+                    }`}
+                  >
+                    {ic}
+                  </button>
+                ))}
+              </div>
             </div>
 
             <div>
@@ -430,26 +458,44 @@ export default function AdminProjects() {
             backgroundColor: themeColors?.cardBg || 'rgba(255,255,255,0.05)',
           }}
         >
-          <div className="mb-6 flex items-center justify-between">
-            <h2 className="text-xl font-semibold">Your Projects</h2>
-            {!loading && projects.length > 0 && (
-              <span 
-                className="rounded-full px-3 py-1 text-xs"
+          <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 className="text-xl font-semibold">Your Projects</h2>
+              <p className="text-xs text-gray-400 mt-1">Manage and preview all portfolio projects</p>
+            </div>
+            
+            <div className="flex items-center gap-3">
+              <input
+                type="text"
+                placeholder="🔍 Search projects..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="rounded-xl border px-3.5 py-2 text-sm outline-none transition placeholder:text-gray-400 focus:ring-2"
                 style={{
-                  backgroundColor: `${getThemeColor()}20`,
-                  color: getThemeColor(),
+                  borderColor: '#d1d5db',
+                  backgroundColor: '#ffffff',
+                  color: '#1f2937',
                 }}
-              >
-                {projects.length} total
-              </span>
-            )}
+              />
+              {!loading && projects.length > 0 && (
+                <span 
+                  className="rounded-full px-3 py-1 text-xs whitespace-nowrap font-medium"
+                  style={{
+                    backgroundColor: `${getThemeColor()}20`,
+                    color: getThemeColor(),
+                  }}
+                >
+                  {filteredProjects.length} / {projects.length} total
+                </span>
+              )}
+            </div>
           </div>
 
           {loading ? (
-            <div className="flex items-center justify-center py-8">
+            <div className="flex items-center justify-center py-12">
               <div className="text-center">
                 <div 
-                  className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-4 border-t-transparent"
+                  className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-4 border-t-transparent"
                   style={{
                     borderColor: `${getThemeColor()}40`,
                     borderTopColor: getThemeColor(),
@@ -460,90 +506,113 @@ export default function AdminProjects() {
             </div>
           ) : projects.length === 0 ? (
             <div 
-              className="rounded-xl border p-8 text-center"
+              className="rounded-xl border p-12 text-center"
               style={{
                 borderColor: '#d1d5db',
                 backgroundColor: '#ffffff',
               }}
             >
-              <p className="text-gray-500">No projects found. Add your first project above!</p>
+              <div className="text-5xl mb-3">💼</div>
+              <p className="text-gray-500 font-medium">No projects found. Add your first project above!</p>
+            </div>
+          ) : filteredProjects.length === 0 ? (
+            <div 
+              className="rounded-xl border p-12 text-center"
+              style={{
+                borderColor: '#d1d5db',
+                backgroundColor: '#ffffff',
+              }}
+            >
+              <div className="text-5xl mb-3">🔍</div>
+              <p className="text-gray-500">No projects match "{searchTerm}"</p>
+              <button
+                onClick={() => setSearchTerm("")}
+                className="mt-2 text-sm text-cyan-600 hover:underline"
+              >
+                Clear search
+              </button>
             </div>
           ) : (
             <div className="space-y-4">
-              {projects.map((project) => (
+              {filteredProjects.map((project) => (
                 <div
                   key={project.id}
-                  className="flex flex-col gap-4 rounded-xl border p-5 transition shadow-sm hover:shadow-md md:flex-row md:items-center md:justify-between"
+                  className="flex flex-col gap-5 rounded-xl border p-6 transition shadow-sm hover:shadow-md md:flex-row md:items-start md:justify-between"
                   style={{
                     backgroundColor: '#ffffff',
                     borderColor: '#e5e7eb',
                   }}
                 >
                   <div className="flex-1">
-                    <h3 className="text-lg font-semibold text-gray-900">
-                      {project.icon} {project.title}
-                    </h3>
-                    <p className="mt-1 text-sm" style={{ color: getThemeColor() }}>
-                      {project.tech}
+                    <div className="flex items-center gap-3">
+                      <span className="text-3xl">{project.icon || "💼"}</span>
+                      <div>
+                        <h3 className="text-lg font-bold text-gray-900">
+                          {project.title}
+                        </h3>
+                        {project.tech && (
+                          <div className="mt-1.5 flex flex-wrap gap-1.5">
+                            {project.tech.split(/[,+/]/).map((t, idx) => {
+                              const clean = t.trim();
+                              if (!clean) return null;
+                              return (
+                                <span
+                                  key={idx}
+                                  className="inline-flex items-center rounded-md px-2.5 py-0.5 text-xs font-medium"
+                                  style={{
+                                    backgroundColor: `${getThemeColor()}15`,
+                                    color: getThemeColor(),
+                                    border: `1px solid ${getThemeColor()}30`,
+                                  }}
+                                >
+                                  {clean}
+                                </span>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <p className="mt-3 text-sm text-gray-600 leading-relaxed">
+                      {project.description}
                     </p>
-                    <p className="mt-2 text-sm text-gray-600">{project.description}</p>
-                    {project.github && (
-                      <a
-                        href={project.github}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="mt-2 inline-flex items-center gap-1 text-sm transition hover:text-gray-700"
-                        style={{ color: '#6b7280' }}
-                      >
-                        🔗 GitHub
-                      </a>
-                    )}
                   </div>
 
-                  <div className="flex gap-2">
-                    {project.demo && (
+                  <div className="flex flex-wrap items-center gap-2 pt-2 md:pt-0">
+                    {project.demo && project.demo !== '#' && (
                       <a
                         href={project.demo}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="rounded-lg px-4 py-2 text-sm font-medium transition"
+                        className="inline-flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-sm font-medium transition hover:shadow-sm"
                         style={{
                           backgroundColor: '#dcfce7',
                           color: '#16a34a',
                         }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.backgroundColor = '#bbf7d0';
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.backgroundColor = '#dcfce7';
-                        }}
                       >
-                        Demo
+                        🌐 Live Demo
                       </a>
                     )}
-                    {project.github && (
+
+                    {project.github && project.github !== '#' && (
                       <a
                         href={project.github}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="rounded-lg px-4 py-2 text-sm font-medium transition"
+                        className="inline-flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-sm font-medium transition hover:shadow-sm"
                         style={{
                           backgroundColor: '#e0e7ff',
                           color: '#4f46e5',
                         }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.backgroundColor = '#c7d2fe';
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.backgroundColor = '#e0e7ff';
-                        }}
                       >
-                        Code
+                        💻 GitHub
                       </a>
                     )}
+
                     <button
                       onClick={() => editProject(project)}
-                      className="rounded-lg px-4 py-2 text-sm font-medium transition"
+                      className="inline-flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-sm font-medium transition hover:shadow-sm"
                       style={{
                         backgroundColor: '#dbeafe',
                         color: '#2563eb',
@@ -555,12 +624,13 @@ export default function AdminProjects() {
                         e.currentTarget.style.backgroundColor = '#dbeafe';
                       }}
                     >
-                      Edit
+                      ✏️ Edit
                     </button>
+
                     <button
                       onClick={() => deleteProject(project.id)}
                       disabled={deletingId === project.id}
-                      className="rounded-lg px-4 py-2 text-sm font-medium transition disabled:opacity-50"
+                      className="inline-flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-sm font-medium transition disabled:opacity-50 hover:shadow-sm"
                       style={{
                         backgroundColor: '#fee2e2',
                         color: '#dc2626',
@@ -575,7 +645,7 @@ export default function AdminProjects() {
                       {deletingId === project.id ? (
                         <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-red-500 border-t-transparent" />
                       ) : (
-                        "Delete"
+                        "🗑️ Delete"
                       )}
                     </button>
                   </div>

@@ -297,6 +297,35 @@ const getCurrentAdmin = async (req, res) => {
 };
 
 // ============================================================
+// DASHBOARD STATS
+// ============================================================
+
+const getDashboardStats = async (req, res, next) => {
+  try {
+    const [[{ projectCount }]] = await pool.query("SELECT COUNT(*) AS projectCount FROM projects");
+    const [[{ educationCount }]] = await pool.query("SELECT COUNT(*) AS educationCount FROM education");
+    const [[{ skillCount }]] = await pool.query("SELECT COUNT(*) AS skillCount FROM skills");
+    const [[{ certCount }]] = await pool.query("SELECT COUNT(*) AS certCount FROM certifications");
+    const [[{ langCount }]] = await pool.query("SELECT COUNT(*) AS langCount FROM languages");
+    const [[{ hobbyCount }]] = await pool.query("SELECT COUNT(*) AS hobbyCount FROM hobbies");
+
+    res.json({
+      success: true,
+      data: {
+        projects: Number(projectCount) || 0,
+        education: Number(educationCount) || 0,
+        skills: Number(skillCount) || 0,
+        certifications: Number(certCount) || 0,
+        languages: Number(langCount) || 0,
+        hobbies: Number(hobbyCount) || 0,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ============================================================
 // PROJECTS
 // ============================================================
 
@@ -1546,6 +1575,7 @@ module.exports = {
   loginAdmin,
   logoutAdmin,
   getCurrentAdmin,
+  getDashboardStats,
 
   // Projects
   createProject,

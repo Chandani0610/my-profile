@@ -36,82 +36,79 @@ export default function AdminDashboard() {
     return themeColorSwatches[currentTheme] || themeColorSwatches.blue;
   };
 
-  // ✅ Updated useEffect with AbortController for cleanup
   useEffect(() => {
-    const abortController = new AbortController();
+    let isMounted = true;
 
     const loadDashboard = async () => {
       try {
         setLoading(true);
 
-        // 1. Fetch portfolio stats
+        // 1. Try dedicated fast stats endpoint
+        let loadedStats = null;
         try {
-          const portfolioResponse = await API.get("/portfolio", {
-            signal: abortController.signal,
-          });
+          const statsRes = await API.get("/admin/stats");
+          if (statsRes.data?.success && statsRes.data.data) {
+            loadedStats = statsRes.data.data;
+          }
+        } catch {
+          // fallback to /portfolio below
+        }
 
+        // 2. Fetch portfolio data (for portfolio state & stats fallback)
+        try {
+          const portfolioResponse = await API.get("/portfolio");
           if (portfolioResponse.data?.success) {
             const data = portfolioResponse.data.data || {};
-            setPortfolio(data);
+            if (isMounted) setPortfolio(data);
 
-            const projectCount = Array.isArray(data.projects) ? data.projects.length : 0;
-            const educationCount = Array.isArray(data.education) ? data.education.length : 0;
-            const certificationCount = Array.isArray(data.certifications) ? data.certifications.length : 0;
-            const languageCount = Array.isArray(data.languages) ? data.languages.length : 0;
-            const hobbyCount = Array.isArray(data.hobbies) ? data.hobbies.length : 0;
+            if (!loadedStats) {
+              const projectCount = Array.isArray(data.projects) ? data.projects.length : 0;
+              const educationCount = Array.isArray(data.education) ? data.education.length : 0;
+              const certificationCount = Array.isArray(data.certifications) ? data.certifications.length : 0;
+              const languageCount = Array.isArray(data.languages) ? data.languages.length : 0;
+              const hobbyCount = Array.isArray(data.hobbies) ? data.hobbies.length : 0;
 
-            let skillCount = 0;
-            if (Array.isArray(data.skills)) {
-              skillCount = data.skills.length;
-            } else if (data.skills && typeof data.skills === "object") {
-              skillCount = Object.values(data.skills).reduce(
-                (total, skills) => total + (Array.isArray(skills) ? skills.length : 0),
-                0
-              );
+              let skillCount = 0;
+              if (Array.isArray(data.skills)) {
+                skillCount = data.skills.length;
+              } else if (data.skills && typeof data.skills === "object") {
+                skillCount = Object.values(data.skills).reduce(
+                  (total, skills) => total + (Array.isArray(skills) ? skills.length : 0),
+                  0
+                );
+              }
+
+              loadedStats = {
+                projects: projectCount,
+                education: educationCount,
+                skills: skillCount,
+                certifications: certificationCount,
+                languages: languageCount,
+                hobbies: hobbyCount,
+              };
             }
-
-            setStats({
-              projects: projectCount,
-              education: educationCount,
-              skills: skillCount,
-              certifications: certificationCount,
-              languages: languageCount,
-              hobbies: hobbyCount,
-            });
           }
         } catch (portfolioErr) {
-          if (portfolioErr.name !== "AbortError") {
-            console.error("Failed to load portfolio stats:", portfolioErr);
-          }
+          console.error("Portfolio stats error:", portfolioErr);
         }
 
-        // 2. Check admin authentication
-        try {
-          const adminResponse = await API.get("/admin/me", {
-            signal: abortController.signal,
-          });
+        if (loadedStats && isMounted) {
+          setStats(loadedStats);
+        }
 
-          if (adminResponse.data?.success) {
+        // 3. Optional admin profile check
+        try {
+          const adminResponse = await API.get("/admin/me");
+          if (adminResponse.data?.success && adminResponse.data.admin && isMounted) {
             setAdmin(adminResponse.data.admin);
-          } else {
-            navigate("/admin");
-            return;
           }
         } catch (adminErr) {
-          if (adminErr.name !== "AbortError") {
-            console.warn("Admin session check:", adminErr?.message);
-            if (adminErr.response?.status === 401) {
-              navigate("/admin");
-              return;
-            }
-          }
+          console.warn("Admin check warning:", adminErr?.message);
         }
       } catch (error) {
-        if (error.name !== 'AbortError') {
-          console.error("Failed to load dashboard:", error);
-        }
+        console.error("Dashboard error:", error);
       } finally {
-        if (!abortController.signal.aborted) {
+        if (isMounted) {
           setLoading(false);
         }
       }
@@ -120,9 +117,9 @@ export default function AdminDashboard() {
     loadDashboard();
 
     return () => {
-      abortController.abort();
+      isMounted = false;
     };
-  }, [navigate]);
+  }, []);
 
   // Logout function
   const handleLogout = async () => {
