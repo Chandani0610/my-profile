@@ -242,6 +242,12 @@ router.post(
   uploadImage
 );
 
+router.post(
+  "/upload/image",
+  upload.single("image"),
+  uploadImage
+);
+
 // =====================================================
 // EXPORT ROUTER
 // =====================================================

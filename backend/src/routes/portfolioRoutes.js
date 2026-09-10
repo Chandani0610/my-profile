@@ -51,7 +51,7 @@ router.get("/", async (req, res, next) => {
     // -----------------------------------------------
 
     const [personalRows] = await pool.query(`
-      SELECT *
+      SELECT *, role AS title
       FROM personal_info
       ORDER BY id DESC
       LIMIT 1
@@ -140,6 +140,11 @@ router.get("/", async (req, res, next) => {
       success: true,
       data: {
         personalInfo:
+          personalRows.length > 0
+            ? personalRows[0]
+            : null,
+
+        personal:
           personalRows.length > 0
             ? personalRows[0]
             : null,

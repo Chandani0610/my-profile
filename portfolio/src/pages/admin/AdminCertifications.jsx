@@ -68,25 +68,44 @@ export default function AdminCertifications() {
   const loadCertifications = async () => {
     try {
       setLoading(true);
-      const response = await API.get("/admin/certifications");
-
-      if (response.data.success) {
-        let certs = response.data.data || [];
-        
-        if (Array.isArray(certs)) {
-          certs = certs.filter(cert => cert != null).map(cert => ({
-            ...cert,
-            name: cert.name || cert.certification_name || "",
-            certification_name: cert.certification_name || cert.name || "",
-          }));
-        } else {
-          certs = [];
+      let certs = [];
+      try {
+        const response = await API.get("/admin/certifications");
+        if (response.data?.success && Array.isArray(response.data.data)) {
+          certs = response.data.data;
         }
-        
-        setCertifications(certs);
-      } else {
-        setCertifications([]);
+      } catch (adminErr) {
+        console.warn("Could not load from /admin/certifications, trying /portfolio", adminErr);
       }
+
+      if (certs.length === 0) {
+        try {
+          const pRes = await API.get("/portfolio");
+          if (pRes.data?.success && Array.isArray(pRes.data.data?.certifications)) {
+            certs = pRes.data.data.certifications;
+          }
+        } catch (pErr) {
+          console.error("Failed to load certifications from /portfolio", pErr);
+        }
+      }
+
+      if (Array.isArray(certs)) {
+        certs = certs.filter(cert => cert != null).map(cert => ({
+          ...cert,
+          id: cert.id,
+          name: cert.name || cert.certification_name || "",
+          certification_name: cert.certification_name || cert.name || "",
+          issuer: cert.issuer || "",
+          credential: cert.credential || "",
+          image: cert.image || "",
+          url: cert.url || "",
+          description: cert.description || "",
+        }));
+      } else {
+        certs = [];
+      }
+
+      setCertifications(certs);
     } catch (error) {
       console.error("Failed to load certifications:", error);
       showMessage("❌ Failed to load certifications.", "error");
@@ -167,11 +186,20 @@ export default function AdminCertifications() {
       const formData = new FormData();
       formData.append('image', file);
 
-      const response = await API.post('/admin/upload/image', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
+      let response;
+      try {
+        response = await API.post('/admin/upload', formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        });
+      } catch {
+        response = await API.post('/admin/upload/image', formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        });
+      }
 
       if (response.data.success) {
         setForm(prev => ({
