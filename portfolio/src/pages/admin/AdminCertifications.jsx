@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 
-import API from "../../services/api";
+import API, { getImageUrl } from "../../services/api";
 import AdminSidebar from "../../components/admin/AdminSidebar";
 import { useTheme } from "../../context/ThemeContext";
 
@@ -673,7 +673,7 @@ export default function AdminCertifications() {
                 <div className="mt-3">
                   {imagePreview && (
                     <img
-                      src={imagePreview}
+                      src={getImageUrl(imagePreview)}
                       alt="Certification preview"
                       className="max-h-32 rounded-lg object-contain"
                       onError={(e) => {
@@ -924,8 +924,8 @@ export default function AdminCertifications() {
                             <div className={`flex items-center ${viewMode === "grid" ? "flex-col text-center" : "gap-4"}`}>
                               {item.image && (
                                 <img
-                                  src={item.image}
-                                  alt={item.certification_name}
+                                  src={getImageUrl(item.image)}
+                                  alt={item.certification_name || item.name}
                                   className={`${viewMode === "grid" ? "h-16 w-16" : "h-12 w-12"} rounded-lg object-contain`}
                                   onError={(e) => {
                                     e.target.src = '/file-icon.png';

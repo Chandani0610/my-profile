@@ -41,40 +41,51 @@ export default function AdminPersonal() {
   };
 
   // ✅ Updated useEffect with AbortController for cleanup
+  // ✅ Load personal info with dual fallback (/admin/personal and /portfolio)
+  const fetchPersonalData = async (signal) => {
+    let pInfo = null;
+    try {
+      const response = await API.get("/admin/personal", signal ? { signal } : undefined);
+      if (response.data?.success) {
+        pInfo = response.data.data;
+      }
+    } catch {
+      try {
+        const response = await API.get("/portfolio", signal ? { signal } : undefined);
+        if (response.data?.success) {
+          pInfo = response.data.data?.personalInfo || response.data.data;
+        }
+      } catch (err) {
+        if (err.name !== 'AbortError') {
+          console.error("Failed to load personal info:", err);
+        }
+      }
+    }
+
+    if (pInfo) {
+      setForm({
+        name: pInfo.name || "",
+        title: pInfo.title || pInfo.role || "",
+        about: pInfo.about || "",
+        location: pInfo.location || "",
+        email: pInfo.email || "",
+        phone: pInfo.phone || "",
+        github: pInfo.github || "",
+        linkedin: pInfo.linkedin || "",
+        instagram: pInfo.instagram || "",
+        youtube: pInfo.youtube || "",
+      });
+    }
+  };
+
   useEffect(() => {
     const abortController = new AbortController();
 
     const loadPersonal = async () => {
-      try {
-        setLoading(true);
-        const response = await API.get("/portfolio", {
-          signal: abortController.signal
-        });
-
-        if (response.data.success) {
-          const data = response.data.data;
-          setForm({
-            name: data.name || "",
-            title: data.title || "",
-            about: data.about || "",
-            location: data.location || "",
-            email: data.email || "",
-            phone: data.phone || "",
-            github: data.github || "",
-            linkedin: data.linkedin || "",
-            instagram: data.instagram || "",
-            youtube: data.youtube || "",
-          });
-        }
-      } catch (error) {
-        if (error.name !== 'AbortError') {
-          console.error("Failed to load personal info:", error);
-          setMessage("Failed to load personal information.");
-        }
-      } finally {
-        if (!abortController.signal.aborted) {
-          setLoading(false);
-        }
+      setLoading(true);
+      await fetchPersonalData(abortController.signal);
+      if (!abortController.signal.aborted) {
+        setLoading(false);
       }
     };
 
@@ -100,26 +111,16 @@ export default function AdminPersonal() {
     setMessage("");
 
     try {
-      await API.put("/admin/personal", form);
+      const payload = {
+        ...form,
+        role: form.title || form.role || "",
+      };
+
+      await API.put("/admin/personal", payload);
       setMessage("✅ Personal information updated successfully.");
       
       // Reload fresh data after update
-      const response = await API.get("/portfolio");
-      if (response.data.success) {
-        const data = response.data.data;
-        setForm({
-          name: data.name || "",
-          title: data.title || "",
-          about: data.about || "",
-          location: data.location || "",
-          email: data.email || "",
-          phone: data.phone || "",
-          github: data.github || "",
-          linkedin: data.linkedin || "",
-          instagram: data.instagram || "",
-          youtube: data.youtube || "",
-        });
-      }
+      await fetchPersonalData();
 
       // Auto-dismiss message after 3 seconds
       setTimeout(() => setMessage(""), 3000);

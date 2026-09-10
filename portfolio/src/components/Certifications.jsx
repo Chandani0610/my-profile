@@ -1,6 +1,6 @@
 import { useTheme } from "../context/ThemeContext";
 import { useEffect, useState } from "react";
-import API from "../services/api";
+import API, { getImageUrl } from "../services/api";
 
 export default function Certifications({ certifications: propCertifications }) {
   const [certifications, setCertifications] = useState([]);
@@ -176,7 +176,7 @@ export default function Certifications({ certifications: propCertifications }) {
           {displayImage ? (
             <div className="mb-2.5">
               <img
-                src={displayImage}
+                src={getImageUrl(displayImage)}
                 alt={displayName}
                 className="h-14 w-14 rounded-lg object-contain"
                 onError={(e) => {

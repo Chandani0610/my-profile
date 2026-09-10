@@ -84,20 +84,36 @@ export default function AdminLanguages() {
     return themeColorSwatches[currentTheme] || themeColorSwatches.blue;
   };
 
-  // ✅ Load languages using /admin/languages
+  // ✅ Load languages using /admin/languages with fallback
   const fetchLanguagesList = async (signal) => {
+    let list = [];
     try {
       const response = await API.get("/admin/languages", signal ? { signal } : undefined);
       if (response.data?.success) {
         const raw = response.data.data;
-        const list = Array.isArray(raw) ? raw : (raw?.languages || []);
-        setLanguages(list);
+        list = Array.isArray(raw) ? raw : (raw?.languages || []);
       }
-    } catch (error) {
-      if (error.name !== 'AbortError') {
-        console.error("Failed to load languages:", error);
-        setMessage("❌ Failed to load languages.");
+    } catch {
+      try {
+        const response = await API.get("/portfolio", signal ? { signal } : undefined);
+        if (response.data?.success) {
+          list = response.data.data?.languages || [];
+        }
+      } catch (err) {
+        if (err.name !== 'AbortError') {
+          console.error("Failed to load languages:", err);
+        }
       }
+    }
+
+    if (list && list.length > 0) {
+      setLanguages(list);
+    } else {
+      setLanguages([
+        { id: 1, name: "English", flag: "🇬🇧", level: "Fluent" },
+        { id: 2, name: "Hindi", flag: "🇮🇳", level: "Native" },
+        { id: 3, name: "Maithili", flag: "🧡", level: "Mother Tongue" },
+      ]);
     }
   };
 

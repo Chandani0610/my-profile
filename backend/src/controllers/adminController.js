@@ -1393,7 +1393,17 @@ const getPersonalInfo = async (
 ) => {
   try {
     const [rows] = await pool.query(
-      `SELECT *
+      `SELECT id,
+              name,
+              role,
+              role AS title,
+              about,
+              email,
+              linkedin,
+              location,
+              phone,
+              created_at,
+              updated_at
        FROM personal_info
        ORDER BY id DESC
        LIMIT 1`
@@ -1422,15 +1432,13 @@ const updatePersonalInfo = async (
   next
 ) => {
   try {
-    const {
-      name,
-      role,
-      about,
-      email,
-      linkedin,
-      location,
-      phone,
-    } = req.body;
+    const name = req.body.name || "";
+    const role = req.body.role || req.body.title || "";
+    const about = req.body.about || "";
+    const email = req.body.email || "";
+    const linkedin = req.body.linkedin || "";
+    const location = req.body.location || "";
+    const phone = req.body.phone || "";
 
     const [existing] = await pool.query(
       `SELECT id
@@ -1457,19 +1465,30 @@ const updatePersonalInfo = async (
          )
          VALUES (?, ?, ?, ?, ?, ?, ?)`,
         [
-          name || "",
-          role || "",
-          about || "",
-          email || "",
-          linkedin || "",
-          location || "",
-          phone || "",
+          name,
+          role,
+          about,
+          email,
+          linkedin,
+          location,
+          phone,
         ]
       );
 
       const [newInfo] =
         await pool.query(
-          "SELECT * FROM personal_info WHERE id = ?",
+          `SELECT id,
+                  name,
+                  role,
+                  role AS title,
+                  about,
+                  email,
+                  linkedin,
+                  location,
+                  phone,
+                  created_at,
+                  updated_at
+           FROM personal_info WHERE id = ?`,
           [result.insertId]
         );
 
@@ -1497,20 +1516,31 @@ const updatePersonalInfo = async (
            phone = ?
        WHERE id = ?`,
       [
-        name || "",
-        role || "",
-        about || "",
-        email || "",
-        linkedin || "",
-        location || "",
-        phone || "",
+        name,
+        role,
+        about,
+        email,
+        linkedin,
+        location,
+        phone,
         id,
       ]
     );
 
     const [updatedInfo] =
       await pool.query(
-        "SELECT * FROM personal_info WHERE id = ?",
+        `SELECT id,
+                name,
+                role,
+                role AS title,
+                about,
+                email,
+                linkedin,
+                location,
+                phone,
+                created_at,
+                updated_at
+         FROM personal_info WHERE id = ?`,
         [id]
       );
 

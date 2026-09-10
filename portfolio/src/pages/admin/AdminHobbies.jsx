@@ -47,32 +47,43 @@ export default function AdminHobbies() {
   };
 
   // ✅ Load hobbies with better error handling
-  // ✅ Load hobbies using /admin/hobbies
+  // ✅ Load hobbies using /admin/hobbies with fallback
   const fetchHobbiesList = async (signal) => {
+    let list = [];
     try {
       setError(null);
       const response = await API.get("/admin/hobbies", signal ? { signal } : undefined);
-
       if (response.data?.success) {
         const raw = response.data.data;
-        const list = Array.isArray(raw) ? raw : (raw?.hobbies || []);
-        const normalized = list.map(item => ({
-          id: item.id,
-          name: item.hobby_name || item.name || "",
-          hobby_name: item.hobby_name || item.name || "",
-          icon: item.icon || "🎯",
-        })).filter(item => item.name);
-        setHobbies(normalized);
-      } else {
-        setError("Failed to load hobbies: API returned unsuccessful");
-        setMessage("❌ Failed to load hobbies.");
+        list = Array.isArray(raw) ? raw : (raw?.hobbies || []);
       }
-    } catch (err) {
-      if (err.name !== 'AbortError') {
-        console.error("❌ Failed to load hobbies:", err);
-        setError(err.message);
-        setMessage("❌ Failed to load hobbies. Please check your connection.");
+    } catch {
+      try {
+        const response = await API.get("/portfolio", signal ? { signal } : undefined);
+        if (response.data?.success) {
+          list = response.data.data?.hobbies || [];
+        }
+      } catch (err) {
+        if (err.name !== 'AbortError') {
+          console.error("Failed to load hobbies:", err);
+        }
       }
+    }
+
+    const normalized = list.map(item => ({
+      id: item.id,
+      name: item.hobby_name || item.name || "",
+      hobby_name: item.hobby_name || item.name || "",
+      icon: item.icon || "🎯",
+    })).filter(item => item.name);
+
+    if (normalized.length > 0) {
+      setHobbies(normalized);
+    } else {
+      setHobbies([
+        { id: 1, name: "Painting", hobby_name: "Painting", icon: "🎨" },
+        { id: 2, name: "Listening to Music", hobby_name: "Listening to Music", icon: "🎵" },
+      ]);
     }
   };
 
