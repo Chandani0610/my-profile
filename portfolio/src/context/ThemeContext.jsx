@@ -52,6 +52,9 @@ export const ThemeProvider = ({ children }) => {
     const root = document.documentElement;
 
     root.setAttribute("data-theme", themeKey);
+    if (typeof document !== "undefined" && document.body) {
+      document.body.setAttribute("data-theme", themeKey);
+    }
 
     Object.entries(colors).forEach(([key, value]) => {
       // standard camelCase CSS variable (e.g. --primaryLight)
@@ -149,10 +152,12 @@ export const ThemeProvider = ({ children }) => {
     applyThemeVariables(currentTheme);
   }, [currentTheme, applyThemeVariables]);
 
-  // Temporary preview change
+  // Instant theme change and live preview
   const changeTheme = (themeName) => {
     if (themes[themeName]) {
       setCurrentTheme(themeName);
+      localStorage.setItem("portfolio-theme", themeName);
+      applyThemeVariables(themeName);
     }
   };
 

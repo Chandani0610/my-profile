@@ -1,258 +1,243 @@
-import { useTheme } from "../context/ThemeContext";
+// components/Projects.jsx
+import { ArrowRight, ExternalLink } from "lucide-react";
+import { getImageUrl } from "../services/api";
+import vedantDevotionsImg from "../assets/vedant-devotions.png";
+import kahanilandMobileImg from "../assets/kahaniland-mobile.jpg";
 
 export default function Projects({ projects }) {
-  let themeColors;
-  try {
-    const theme = useTheme();
-    themeColors = theme.themeColors;
-  } catch {
-    themeColors = {
-      primary: '#08bde0',
-      primaryDark: '#07a8c9',
-      primaryLight: '#e8f4f8',
-      accent: '#48e39a',
-      accentDark: '#32d789',
-      text: '#10243e',
-      textSecondary: '#7c8997',
-      border: '#e9eef2',
-      cardBg: '#ffffff',
-      cardBorder: '#e7edf1',
-      background: '#f8fafb',
-      sectionBg: '#ffffff',
-      shadow: 'rgba(16,36,62,0.08)',
-      shadowHover: 'rgba(16,36,62,0.12)',
-      gradient: 'linear-gradient(135deg, #08bde0, #07a8c9)',
-    };
-  }
-
-  // Use props or fallback data
-  const projectsData = projects || [
+  const defaultProjects = [
     {
-      title: "E-Commerce Platform",
-      icon: "🛒",
-      tech: "React.js + Node.js + MySQL",
-      description: "Full-stack e-commerce platform with payment integration.",
-      github: "https://github.com/example/ecommerce",
-      demo: "https://ecommerce-demo.com",
-    },
-    {
-      title: "Portfolio Website",
-      icon: "💼",
-      tech: "React.js + Tailwind CSS",
-      description: "Personal portfolio website with admin panel.",
-      github: "https://github.com/example/portfolio",
-      demo: "https://portfolio-demo.com",
-    },
-    {
-      title: "Task Management App",
-      icon: "📋",
-      tech: "React.js + Firebase",
-      description: "Real-time task management application with team collaboration.",
-      github: "https://github.com/example/task-app",
+      id: 1,
+      title: "Fee Management System",
+      description: "A web application to manage student fees, payments and attendance.",
+      tech: ["React.js", "Tailwind CSS", "Node.js", "MySQL"],
       demo: "#",
+      github: "https://github.com/Chandani0610",
+      image: null,
+      type: "fee",
+    },
+    {
+      id: 2,
+      title: "Vedant Devotions",
+      description: "A devotional website to upload videos, lyrics and photos.",
+      tech: ["React.js", "Tailwind CSS", "Node.js", "MySQL"],
+      demo: "#",
+      github: "https://github.com/Chandani0610",
+      image: vedantDevotionsImg,
+      type: "vedant",
+    },
+    {
+      id: 3,
+      title: "KahaniLand (Mobile App)",
+      description: "React Native app for children with stories and videos.",
+      tech: ["React Native", "Redux", "Firebase"],
+      demo: "#",
+      github: "https://github.com/Chandani0610",
+      image: kahanilandMobileImg,
+      type: "mobile",
     },
   ];
 
-  // Calculate stats
-  const totalProjects = projectsData.length;
-  const openSourceCount = projectsData.filter(p => p.github && p.github !== '#').length;
-  const liveDemoCount = projectsData.filter(p => p.demo && p.demo !== '#').length;
+  // Merge projects from props or database with fallbacks
+  const rawList = (projects && projects.length > 0) ? projects : defaultProjects;
+
+  const projectList = rawList.map((p, idx) => {
+    const title = p.title || "Featured Project";
+    const lower = title.toLowerCase();
+
+    let fallbackType = "generic";
+    let fallbackImg = null;
+
+    if (lower.includes("vedant")) {
+      fallbackType = "vedant";
+      fallbackImg = vedantDevotionsImg;
+    } else if (lower.includes("mobile") || lower.includes("kahani")) {
+      fallbackType = "mobile";
+      fallbackImg = kahanilandMobileImg;
+    } else if (lower.includes("fee")) {
+      fallbackType = "fee";
+    }
+
+    const techList = Array.isArray(p.tech)
+      ? p.tech
+      : (p.tech || p.technologies || "")
+          .split("+")
+          .join(",")
+          .split(",")
+          .map((t) => t.trim())
+          .filter(Boolean);
+
+    return {
+      id: p.id || idx + 1,
+      title,
+      description: p.description || "",
+      tech: techList.length > 0 ? techList : ["React.js", "Tailwind CSS", "MySQL"],
+      demo: p.demo || "#",
+      github: p.github || "https://github.com/Chandani0610",
+      image: p.image || fallbackImg,
+      type: p.image ? "custom-image" : fallbackType,
+      icon: p.icon || "💻",
+    };
+  });
 
   return (
-    <section 
-      id="projects" 
-      className="relative px-4 py-16 sm:px-6 lg:px-8 lg:py-20"
-      style={{ backgroundColor: themeColors.background }}
-    >
-      <div className="mx-auto max-w-7xl">
-
+    <section id="other-projects" className="relative w-full px-4 py-8 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-[1400px]">
+        
         {/* Section Header */}
-        <div className="mx-auto mb-10 max-w-[650px] text-center">
-          <p className="text-xs uppercase tracking-[0.28em]" style={{ color: themeColors.primary }}>
-            Projects
-          </p>
-          <h2 className="m-0 text-3xl font-bold tracking-[-1px]" style={{ color: themeColors.text }}>
-            Selected Work
-          </h2>
-          <p className="mx-auto mt-2 max-w-2xl text-sm" style={{ color: themeColors.textSecondary }}>
-            Featured projects showcasing modern UI, thoughtful layout, and polished detail.
-          </p>
+        <div className="flex items-end justify-between border-b border-slate-200/80 pb-4">
+          <div>
+            <span className="text-[11px] font-bold tracking-[0.2em] text-purple-600 uppercase">
+              OTHER PROJECTS
+            </span>
+            <h2 className="mt-1 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+              My Works
+            </h2>
+          </div>
+
+          <a
+            href="https://github.com/Chandani0610"
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-semibold text-purple-700 hover:text-purple-800 transition"
+          >
+            <span>View All Projects</span>
+            <ArrowRight className="h-4 w-4" />
+          </a>
         </div>
 
-        {/* Project Cards */}
-        <div className="mx-auto grid max-w-5xl grid-cols-1 gap-5 md:grid-cols-2">
-          {projectsData.map((project, idx) => (
+        {/* Projects Grid */}
+        <div className="mt-6 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {projectList.map((project, idx) => (
             <div
-              key={idx}
-              className="group rounded-2xl border p-5 transition-all duration-300 hover:-translate-y-1"
-              style={{ 
-                borderColor: themeColors.border,
-                backgroundColor: themeColors.cardBg,
-                boxShadow: `0 8px 25px ${themeColors.shadow}`,
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.boxShadow = `0 15px 35px ${themeColors.shadowHover}`;
-                e.currentTarget.style.borderColor = themeColors.primary;
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.boxShadow = `0 8px 25px ${themeColors.shadow}`;
-                e.currentTarget.style.borderColor = themeColors.border;
-              }}
+              key={project.id || idx}
+              className="group flex flex-col justify-between overflow-hidden rounded-3xl border border-slate-200/80 bg-white p-5 shadow-sm transition-all duration-300 hover:shadow-lg hover:-translate-y-1"
             >
-              {/* Project Header */}
-              <div>
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex items-center gap-2">
-                    <span 
-                      className="text-2xl transition-transform duration-300 group-hover:scale-110"
-                      style={{ color: themeColors.primary }}
-                    >
-                      {project.icon || '📁'}
-                    </span>
-                    <h3 className="text-xl font-semibold" style={{ color: themeColors.text }}>
-                      {project.title}
-                    </h3>
-                  </div>
-                  <span
-                    className="shrink-0 rounded-full border px-2.5 py-0.5 text-[10px] font-semibold transition-all duration-300 group-hover:scale-105"
-                    style={{ 
-                      borderColor: `${themeColors.primary}30`,
-                      backgroundColor: `${themeColors.primary}15`,
-                      color: themeColors.primary
+              {/* Thumbnail / UI Mockup Preview */}
+              <div className="relative aspect-[16/10] w-full overflow-hidden rounded-2xl border border-slate-200/80 bg-transparent flex items-center justify-center">
+                {/* 1. Custom Uploaded Image */}
+                {project.image ? (
+                  <img
+                    src={getImageUrl(project.image)}
+                    alt={project.title}
+                    className="h-full w-full object-cover object-top transition duration-500 group-hover:scale-105"
+                    onError={(e) => {
+                      if (!project.image.startsWith("http") && !project.image.startsWith("/")) {
+                        e.target.src = "/" + project.image;
+                      }
                     }}
-                  >
-                    Featured
-                  </span>
-                </div>
+                  />
+                ) : project.type === "fee" ? (
+                  /* 2. Fee Management System Interactive Mockup */
+                  <div className="h-full w-full bg-transparent p-3.5 flex flex-col justify-between transition duration-500 group-hover:scale-105">
+                    <div className="flex items-center justify-between border-b border-slate-200/80 pb-1.5">
+                      <span className="text-[10px] font-bold text-slate-700">Fee & Attendance Portal</span>
+                      <span className="rounded-full bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-[8px] font-bold text-emerald-700">Live</span>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2 my-auto">
+                      <div className="rounded-xl bg-transparent p-2 border border-slate-200/80 text-center">
+                        <div className="text-[9px] text-slate-500 font-medium">Collected</div>
+                        <div className="text-xs font-bold text-purple-700">₹8.4L</div>
+                      </div>
+                      <div className="rounded-xl bg-transparent p-2 border border-slate-200/80 text-center">
+                        <div className="text-[9px] text-slate-500 font-medium">Pending</div>
+                        <div className="text-xs font-bold text-amber-600">₹1.2L</div>
+                      </div>
+                      <div className="rounded-xl bg-transparent p-2 border border-slate-200/80 text-center">
+                        <div className="text-[9px] text-slate-500 font-medium">Students</div>
+                        <div className="text-xs font-bold text-slate-800">420</div>
+                      </div>
+                    </div>
+                    {/* Mini bar chart */}
+                    <div className="flex items-end gap-1.5 h-6 px-2">
+                      <div className="w-1/6 bg-indigo-400 rounded-t h-3" />
+                      <div className="w-1/6 bg-indigo-500 rounded-t h-5" />
+                      <div className="w-1/6 bg-indigo-400 rounded-t h-4" />
+                      <div className="w-1/6 bg-purple-600 rounded-t h-6" />
+                      <div className="w-1/6 bg-indigo-400 rounded-t h-3" />
+                      <div className="w-1/6 bg-indigo-500 rounded-t h-5" />
+                    </div>
+                  </div>
+                ) : project.type === "mobile" ? (
+                  /* 3. Mobile Device Mockup */
+                  <div className="h-full w-full bg-transparent flex items-center justify-center p-2">
+                    <div className="h-[95%] w-[120px] overflow-hidden rounded-xl border-2 border-slate-800 shadow-md">
+                      <img
+                        src={kahanilandMobileImg}
+                        alt="KahaniLand Mobile App"
+                        className="h-full w-full object-cover object-top transition duration-500 group-hover:scale-105"
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  /* 4. Generic Project Banner */
+                  <div className="h-full w-full bg-transparent flex flex-col items-center justify-center p-4">
+                    <div className="text-3xl mb-1">{project.icon || "💻"}</div>
+                    <span className="text-xs font-bold text-slate-700">{project.title}</span>
+                  </div>
+                )}
+              </div>
 
-                {/* Technologies */}
-                <div className="mt-3 flex flex-wrap gap-1">
-                  {project.tech && project.tech.split(' + ').map((tech, i) => (
-                    <span
-                      key={i}
-                      className="rounded-full border px-2 py-0.5 text-[9px] font-semibold transition-all duration-200 hover:scale-105"
-                      style={{ 
-                        borderColor: `${themeColors.primary}30`,
-                        backgroundColor: `${themeColors.primary}10`,
-                        color: themeColors.primary,
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor = `${themeColors.primary}25`;
-                        e.currentTarget.style.borderColor = themeColors.primary;
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = `${themeColors.primary}10`;
-                        e.currentTarget.style.borderColor = `${themeColors.primary}30`;
-                      }}
-                    >
-                      {tech}
-                    </span>
-                  ))}
-                </div>
-
-                {/* Description */}
-                <p className="mt-2 text-sm leading-relaxed" style={{ color: themeColors.textSecondary }}>
+              {/* Title & Description */}
+              <div className="mt-4">
+                <h3 className="text-base font-bold text-slate-900">
+                  {project.title}
+                </h3>
+                <p className="mt-1.5 text-xs text-slate-600 line-clamp-2 leading-relaxed">
                   {project.description}
                 </p>
               </div>
 
-              {/* Buttons */}
-              <div className="mt-4 flex flex-wrap gap-2">
-                {project.github && project.github !== '#' && (
-                  <button
-                    type="button"
-                    className="min-w-[110px] rounded-full border px-4 py-2 text-xs font-semibold transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md"
-                    style={{ 
-                      borderColor: themeColors.border,
-                      backgroundColor: themeColors.cardBg,
-                      color: themeColors.text,
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.borderColor = themeColors.primary;
-                      e.currentTarget.style.color = themeColors.primary;
-                      e.currentTarget.style.backgroundColor = `${themeColors.primary}08`;
-                      e.currentTarget.style.boxShadow = `0 4px 12px ${themeColors.primary}20`;
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.borderColor = themeColors.border;
-                      e.currentTarget.style.color = themeColors.text;
-                      e.currentTarget.style.backgroundColor = themeColors.cardBg;
-                      e.currentTarget.style.boxShadow = 'none';
-                    }}
-                    onClick={() => window.open(project.github, "_blank")}
+              {/* Tech Badges */}
+              <div className="mt-4 flex flex-wrap gap-1.5">
+                {(Array.isArray(project.tech) ? project.tech : []).map((t) => (
+                  <span
+                    key={t}
+                    className="rounded-full bg-slate-100 px-2.5 py-0.5 text-[11px] font-medium text-slate-700"
                   >
-                    GitHub ↗
-                  </button>
-                )}
+                    {t}
+                  </span>
+                ))}
+              </div>
 
-                {project.demo && project.demo !== '#' && (
-                  <button
-                    type="button"
-                    className="min-w-[110px] rounded-full px-4 py-2 text-xs font-semibold text-white transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md"
-                    style={{ 
-                      backgroundColor: themeColors.primary,
-                      boxShadow: `0 4px 12px ${themeColors.primary}30`
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = themeColors.primaryDark;
-                      e.currentTarget.style.boxShadow = `0 6px 20px ${themeColors.primary}40`;
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = themeColors.primary;
-                      e.currentTarget.style.boxShadow = `0 4px 12px ${themeColors.primary}30`;
-                    }}
-                    onClick={() => window.open(project.demo, "_blank")}
+              {/* Action Buttons */}
+              <div className="mt-5 flex items-center gap-2 border-t border-slate-100 pt-3">
+                {project.type === "mobile" ? (
+                  <a
+                    href={project.demo || project.github || "#"}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex w-full items-center justify-center gap-1.5 rounded-full bg-purple-50 py-2 text-xs font-semibold text-purple-700 transition hover:bg-purple-100"
                   >
-                    Live Demo ↗
-                  </button>
+                    <span>View Project</span>
+                    <ArrowRight className="h-3.5 w-3.5" />
+                  </a>
+                ) : (
+                  <>
+                    <a
+                      href={project.demo || "#"}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-full border border-purple-200 bg-white py-1.5 text-xs font-semibold text-purple-700 transition hover:bg-purple-50"
+                    >
+                      <span>Live Demo</span>
+                      <ExternalLink className="h-3 w-3" />
+                    </a>
+                    <a
+                      href={project.github || "https://github.com/Chandani0610"}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-full border border-slate-200 bg-white py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
+                    >
+                      <span>GitHub</span>
+                      <ExternalLink className="h-3 w-3" />
+                    </a>
+                  </>
                 )}
               </div>
 
-              {/* Decorative line */}
-              <div 
-                className="mt-3 h-0.5 w-10 rounded-full transition-all duration-300 group-hover:w-20"
-                style={{ 
-                  backgroundColor: `${themeColors.primary}30`,
-                }}
-              />
             </div>
           ))}
-        </div>
-
-        {/* Project Stats */}
-        <div className="mx-auto mt-10 max-w-2xl">
-          <div 
-            className="grid grid-cols-3 gap-3 rounded-2xl border p-5 text-center"
-            style={{ 
-              borderColor: themeColors.border,
-              backgroundColor: `${themeColors.primary}05`
-            }}
-          >
-            <div>
-              <p className="text-2xl font-bold" style={{ color: themeColors.primary }}>
-                {totalProjects}
-              </p>
-              <p className="text-[10px]" style={{ color: themeColors.textSecondary }}>
-                Total Projects
-              </p>
-            </div>
-            <div>
-              <p className="text-2xl font-bold" style={{ color: themeColors.primary }}>
-                {openSourceCount}
-              </p>
-              <p className="text-[10px]" style={{ color: themeColors.textSecondary }}>
-                Open Source
-              </p>
-            </div>
-            <div>
-              <p className="text-2xl font-bold" style={{ color: themeColors.primary }}>
-                {liveDemoCount}
-              </p>
-              <p className="text-[10px]" style={{ color: themeColors.textSecondary }}>
-                Live Demos
-              </p>
-            </div>
-          </div>
         </div>
 
       </div>

@@ -2,12 +2,15 @@ const { pool } = require("../config/database");
 
 const authMiddleware = async (req, res, next) => {
   try {
-    const token = req.cookies.admin_session;
+    const cookieToken = req.cookies?.admin_session;
+    const authHeader = req.headers?.authorization;
+    const headerToken = authHeader && authHeader.startsWith("Bearer ") ? authHeader.split(" ")[1] : null;
+    const token = cookieToken || headerToken;
 
     if (!token) {
       return res.status(401).json({
         success: false,
-        message: "Authentication required"
+        message: "Authentication required. Please sign in."
       });
     }
 
@@ -27,11 +30,13 @@ const authMiddleware = async (req, res, next) => {
     );
 
     if (sessions.length === 0) {
-      res.clearCookie("admin_session");
+      if (res.clearCookie) {
+        res.clearCookie("admin_session");
+      }
 
       return res.status(401).json({
         success: false,
-        message: "Session expired. Please login again."
+        message: "Session expired or invalid. Please login again."
       });
     }
 

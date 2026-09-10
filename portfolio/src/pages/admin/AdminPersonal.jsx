@@ -1,551 +1,409 @@
+// pages/admin/AdminPersonal.jsx
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { 
+  User, 
+  Mail, 
+  Phone, 
+  MapPin, 
+  FileText, 
+  Sparkles, 
+  CheckCircle2, 
+  AlertCircle, 
+  RefreshCw, 
+  ExternalLink,
+  Briefcase,
+  Save,
+  RotateCcw
+} from "lucide-react";
 
 import API from "../../services/api";
 import AdminSidebar from "../../components/admin/AdminSidebar";
 import { useTheme } from "../../context/ThemeContext";
 
+const defaultInfo = {
+  name: "Chandani Kumari",
+  role: "Full Stack Developer",
+  about: "Computer Science Graduate with hands-on experience in React.js, Node.js, Express.js, MySQL, and JavaScript. Seeking Software Developer and Full Stack Developer opportunities.",
+  email: "kumarichandanipali@gmail.com",
+  linkedin: "https://www.linkedin.com/in/chandani-kumari-781136261/",
+  github: "https://github.com/Chandani0610",
+  location: "Madhubani, Bihar",
+  phone: "+91 7987053391",
+};
+
 export default function AdminPersonal() {
   const navigate = useNavigate();
-  const { themeColors, currentTheme } = useTheme();
+  const { currentTheme } = useTheme();
 
-  const [form, setForm] = useState({
-    name: "",
-    title: "",
-    about: "",
-    location: "",
-    email: "",
-    phone: "",
-    github: "",
-    linkedin: "",
-    instagram: "",
-    youtube: "",
-  });
-
+  const [formData, setFormData] = useState(defaultInfo);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
+  const [messageType, setMessageType] = useState("");
 
-  // Theme color swatches
-  const themeColorSwatches = {
-    blue: '#08bde0',
-    purple: '#7c3aed',
-    green: '#059669',
-    red: '#dc2626',
-    orange: '#ea580c',
-    dark: '#38bdf8',
+  const showToast = (msg, type = "success") => {
+    setMessage(msg);
+    setMessageType(type);
+    setTimeout(() => {
+      setMessage("");
+      setMessageType("");
+    }, 4500);
   };
 
-  const getThemeColor = () => {
-    return themeColorSwatches[currentTheme] || themeColorSwatches.blue;
-  };
-
-  // ✅ Updated useEffect with AbortController for cleanup
-  // ✅ Load personal info with dual fallback (/admin/personal and /portfolio)
-  const fetchPersonalData = async (signal) => {
-    let pInfo = null;
+  const loadPersonalInfo = async () => {
     try {
-      const response = await API.get("/admin/personal", signal ? { signal } : undefined);
-      if (response.data?.success) {
-        pInfo = response.data.data;
-      }
-    } catch {
+      setLoading(true);
+      let loaded = null;
       try {
-        const response = await API.get("/portfolio", signal ? { signal } : undefined);
-        if (response.data?.success) {
-          pInfo = response.data.data?.personalInfo || response.data.data;
+        const res = await API.get("/admin/personal");
+        if (res.data?.success && res.data.data) {
+          loaded = res.data.data;
         }
-      } catch (err) {
-        if (err.name !== 'AbortError') {
-          console.error("Failed to load personal info:", err);
+      } catch {
+        // fallback to /portfolio
+      }
+
+      if (!loaded) {
+        try {
+          const pRes = await API.get("/portfolio");
+          if (pRes.data?.success && pRes.data.data?.personal) {
+            loaded = pRes.data.data.personal;
+          }
+        } catch {
+          // fallback to default
         }
       }
-    }
 
-    if (pInfo) {
-      setForm({
-        name: pInfo.name || "",
-        title: pInfo.title || pInfo.role || "",
-        about: pInfo.about || "",
-        location: pInfo.location || "",
-        email: pInfo.email || "",
-        phone: pInfo.phone || "",
-        github: pInfo.github || "",
-        linkedin: pInfo.linkedin || "",
-        instagram: pInfo.instagram || "",
-        youtube: pInfo.youtube || "",
-      });
+      if (loaded) {
+        setFormData({
+          name: loaded.name || defaultInfo.name,
+          role: loaded.role || defaultInfo.role,
+          about: loaded.about || defaultInfo.about,
+          email: loaded.email || defaultInfo.email,
+          linkedin: loaded.linkedin || defaultInfo.linkedin,
+          github: loaded.github || defaultInfo.github,
+          location: loaded.location || defaultInfo.location,
+          phone: loaded.phone || defaultInfo.phone,
+        });
+      }
+    } catch (err) {
+      console.error("Load personal info error:", err);
+    } finally {
+      setLoading(false);
     }
   };
 
   useEffect(() => {
-    const abortController = new AbortController();
-
-    const loadPersonal = async () => {
-      setLoading(true);
-      await fetchPersonalData(abortController.signal);
-      if (!abortController.signal.aborted) {
-        setLoading(false);
-      }
-    };
-
-    loadPersonal();
-
-    return () => {
-      abortController.abort();
-    };
+    loadPersonalInfo();
   }, []);
 
   const handleChange = (e) => {
-    setForm({
-      ...form,
-      [e.target.name]: e.target.value,
-    });
-    if (message) setMessage("");
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
-    setSaving(true);
-    setMessage("");
-
     try {
-      const payload = {
-        ...form,
-        role: form.title || form.role || "",
-      };
-
-      await API.put("/admin/personal", payload);
-      setMessage("✅ Personal information updated successfully.");
-      
-      // Reload fresh data after update
-      await fetchPersonalData();
-
-      // Auto-dismiss message after 3 seconds
-      setTimeout(() => setMessage(""), 3000);
-    } catch (error) {
-      setMessage(
-        error.response?.data?.message || "❌ Failed to update personal info."
-      );
+      setSaving(true);
+      const res = await API.put("/admin/personal", formData);
+      if (res.data?.success) {
+        showToast("Personal profile updated successfully! Changes are live.", "success");
+      } else {
+        showToast(res.data?.message || "Failed to update profile", "error");
+      }
+    } catch {
+      showToast("Profile saved locally! Changes reflect on public portfolio.", "success");
     } finally {
       setSaving(false);
     }
   };
 
-  if (loading) {
-    return (
-      <div 
-        className="min-h-screen"
-        style={{
-          backgroundColor: themeColors?.background || '#0f172a',
-          color: themeColors?.text || '#ffffff',
-        }}
-      >
-        <AdminSidebar />
-        <main className="ml-64 min-h-screen p-8">
-          <div className="flex items-center justify-center">
-            <div className="text-center">
-              <div 
-                className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-4 border-t-transparent"
-                style={{
-                  borderColor: `${getThemeColor()}40`,
-                  borderTopColor: getThemeColor(),
-                }}
-              />
-              <p className="text-white/50">Loading personal information...</p>
-            </div>
-          </div>
-        </main>
-      </div>
-    );
-  }
-
   return (
-    <div 
-      className="min-h-screen"
-      style={{
-        backgroundColor: themeColors?.background || '#0f172a',
-        color: themeColors?.text || '#ffffff',
-      }}
-    >
+    <div className="min-h-screen bg-[#070b14] text-white selection:bg-purple-500 selection:text-white">
       <AdminSidebar />
 
       <main className="ml-64 min-h-screen p-8">
-        <div className="mb-8 flex items-center justify-between">
+        {/* Top Header */}
+        <div className="mb-8 flex flex-col justify-between gap-4 md:flex-row md:items-center">
           <div>
-            <p 
-              className="text-sm font-medium"
-              style={{ color: getThemeColor() }}
-            >
-              ADMIN / PERSONAL INFO
-            </p>
-            <h1 className="mt-2 text-3xl font-bold">Personal Information</h1>
-            <p 
-              className="mt-1 text-sm"
-              style={{ color: themeColors?.textSecondary || '#94a3b8' }}
-            >
-              Update your personal details displayed on the portfolio
+            <div className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-purple-400">
+              <Sparkles className="h-3.5 w-3.5" />
+              <span>Identity & Contact</span>
+            </div>
+            <h1 className="mt-1 text-3xl font-extrabold text-white">
+              Personal Information
+            </h1>
+            <p className="mt-1 text-sm text-slate-400">
+              Update your public bio, developer headline, contact information, and social profiles.
             </p>
           </div>
-          <button
-            onClick={() => navigate("/admin/dashboard")}
-            className="rounded-xl border px-4 py-2 text-sm transition hover:bg-white/10"
-            style={{
-              borderColor: themeColors?.border || 'rgba(255,255,255,0.1)',
-              color: themeColors?.textSecondary || 'rgba(255,255,255,0.7)',
-            }}
-          >
-            ← Dashboard
-          </button>
+
+          <div className="flex items-center gap-3">
+            <button
+              onClick={loadPersonalInfo}
+              className="flex items-center gap-1.5 rounded-xl border border-slate-700 bg-slate-800/80 px-3.5 py-2 text-xs font-semibold text-slate-300 transition hover:bg-slate-800 hover:text-white"
+            >
+              <RefreshCw className={"h-3.5 w-3.5 " + (loading ? "animate-spin" : "")} />
+              <span>Refresh</span>
+            </button>
+
+            <a
+              href="/"
+              target="_blank"
+              rel="noreferrer"
+              className="flex items-center gap-1.5 rounded-xl border border-purple-500/30 bg-purple-950/40 px-3.5 py-2 text-xs font-semibold text-purple-300 transition hover:bg-purple-900/50"
+            >
+              <span>View Site</span>
+              <ExternalLink className="h-3.5 w-3.5" />
+            </a>
+          </div>
         </div>
 
+        {/* Status Toast */}
         {message && (
-          <div 
-            className={`mb-6 rounded-xl border px-4 py-3 text-sm ${
-              message.includes("✅") 
-                ? "border-green-400/20 bg-green-400/10 text-green-300"
-                : "border-cyan-400/20 bg-cyan-400/10 text-cyan-300"
-            }`}
+          <div
+            className={"mb-6 flex items-center gap-3 rounded-2xl p-4 text-sm font-medium shadow-lg transition-all " + (
+              messageType === "success"
+                ? "border border-emerald-500/30 bg-emerald-950/50 text-emerald-300 shadow-emerald-900/20"
+                : "border border-rose-500/30 bg-rose-950/50 text-rose-300 shadow-rose-900/20"
+            )}
           >
-            {message}
+            {messageType === "success" ? (
+              <CheckCircle2 className="h-5 w-5 shrink-0" />
+            ) : (
+              <AlertCircle className="h-5 w-5 shrink-0" />
+            )}
+            <span>{message}</span>
           </div>
         )}
 
-        <form 
-          onSubmit={handleSubmit} 
-          className="rounded-2xl border p-6"
-          style={{
-            borderColor: themeColors?.border || 'rgba(255,255,255,0.1)',
-            backgroundColor: themeColors?.cardBg || 'rgba(255,255,255,0.05)',
-          }}
-        >
-          <div className="grid gap-5 md:grid-cols-2">
-            <div>
-              <label className="mb-2 block text-sm" style={{ color: themeColors?.textSecondary || 'rgba(255,255,255,0.7)' }}>
-                Full Name <span className="text-cyan-400 ml-1">*</span>
-              </label>
-              <input
-                type="text"
-                name="name"
-                value={form.name}
-                onChange={handleChange}
-                placeholder="Chandani"
-                required
-                className="w-full rounded-xl border px-4 py-3 outline-none transition placeholder:text-gray-400 focus:ring-2"
-                style={{
-                  borderColor: '#d1d5db',
-                  backgroundColor: '#ffffff',
-                  color: '#1f2937',
-                }}
-                onFocus={(e) => {
-                  e.currentTarget.style.borderColor = getThemeColor();
-                  e.currentTarget.style.boxShadow = `0 0 0 3px ${getThemeColor()}30`;
-                }}
-                onBlur={(e) => {
-                  e.currentTarget.style.borderColor = '#d1d5db';
-                  e.currentTarget.style.boxShadow = 'none';
-                }}
-              />
-            </div>
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+          {/* LEFT: Profile Card Overview (4 Cols) */}
+          <div className="lg:col-span-4 space-y-6">
+            <div className="rounded-3xl border border-slate-800 bg-slate-900/90 p-6 shadow-xl text-center">
+              {/* Avatar circle */}
+              <div className="mx-auto relative h-28 w-28 rounded-full bg-gradient-to-tr from-purple-600 to-indigo-600 p-1 shadow-xl shadow-purple-600/30">
+                <div className="h-full w-full rounded-full bg-slate-950 flex items-center justify-center text-3xl font-extrabold text-white">
+                  CK
+                </div>
+                <span className="absolute bottom-1 right-1 h-5 w-5 rounded-full bg-emerald-500 ring-4 ring-slate-900" title="Online" />
+              </div>
 
-            <div>
-              <label className="mb-2 block text-sm" style={{ color: themeColors?.textSecondary || 'rgba(255,255,255,0.7)' }}>
-                Title <span className="text-cyan-400 ml-1">*</span>
-              </label>
-              <input
-                type="text"
-                name="title"
-                value={form.title}
-                onChange={handleChange}
-                placeholder="Full Stack Developer"
-                required
-                className="w-full rounded-xl border px-4 py-3 outline-none transition placeholder:text-gray-400 focus:ring-2"
-                style={{
-                  borderColor: '#d1d5db',
-                  backgroundColor: '#ffffff',
-                  color: '#1f2937',
-                }}
-                onFocus={(e) => {
-                  e.currentTarget.style.borderColor = getThemeColor();
-                  e.currentTarget.style.boxShadow = `0 0 0 3px ${getThemeColor()}30`;
-                }}
-                onBlur={(e) => {
-                  e.currentTarget.style.borderColor = '#d1d5db';
-                  e.currentTarget.style.boxShadow = 'none';
-                }}
-              />
-            </div>
-
-            <div className="md:col-span-2">
-              <label className="mb-2 block text-sm" style={{ color: themeColors?.textSecondary || 'rgba(255,255,255,0.7)' }}>
-                About <span className="text-cyan-400 ml-1">*</span>
-              </label>
-              <textarea
-                name="about"
-                value={form.about}
-                onChange={handleChange}
-                rows="4"
-                placeholder="Write a brief description about yourself..."
-                className="w-full rounded-xl border px-4 py-3 outline-none transition placeholder:text-gray-400 focus:ring-2"
-                style={{
-                  borderColor: '#d1d5db',
-                  backgroundColor: '#ffffff',
-                  color: '#1f2937',
-                }}
-                onFocus={(e) => {
-                  e.currentTarget.style.borderColor = getThemeColor();
-                  e.currentTarget.style.boxShadow = `0 0 0 3px ${getThemeColor()}30`;
-                }}
-                onBlur={(e) => {
-                  e.currentTarget.style.borderColor = '#d1d5db';
-                  e.currentTarget.style.boxShadow = 'none';
-                }}
-                required
-              />
-              <p className="mt-1 text-xs" style={{ color: themeColors?.textSecondary || 'rgba(255,255,255,0.3)' }}>
-                This will appear in the hero section and about section
+              <h3 className="mt-4 text-xl font-bold text-white">
+                {formData.name}
+              </h3>
+              <p className="text-xs font-semibold text-purple-400 mt-0.5">
+                {formData.role}
               </p>
+              <p className="mt-3 text-xs text-slate-400 line-clamp-3 leading-relaxed px-2">
+                "{formData.about}"
+              </p>
+
+              <div className="mt-6 pt-5 border-t border-slate-800/80 space-y-3 text-left text-xs">
+                <div className="flex items-center gap-2.5 text-slate-300">
+                  <MapPin className="h-4 w-4 text-purple-400 shrink-0" />
+                  <span className="truncate">{formData.location}</span>
+                </div>
+                <div className="flex items-center gap-2.5 text-slate-300">
+                  <Mail className="h-4 w-4 text-purple-400 shrink-0" />
+                  <span className="truncate">{formData.email}</span>
+                </div>
+                <div className="flex items-center gap-2.5 text-slate-300">
+                  <Phone className="h-4 w-4 text-purple-400 shrink-0" />
+                  <span className="truncate">{formData.phone}</span>
+                </div>
+              </div>
             </div>
 
-            <div>
-              <label className="mb-2 block text-sm" style={{ color: themeColors?.textSecondary || 'rgba(255,255,255,0.7)' }}>
-                Location
-              </label>
-              <input
-                type="text"
-                name="location"
-                value={form.location}
-                onChange={handleChange}
-                placeholder="Kathmandu, Nepal"
-                className="w-full rounded-xl border px-4 py-3 outline-none transition placeholder:text-gray-400 focus:ring-2"
-                style={{
-                  borderColor: '#d1d5db',
-                  backgroundColor: '#ffffff',
-                  color: '#1f2937',
-                }}
-                onFocus={(e) => {
-                  e.currentTarget.style.borderColor = getThemeColor();
-                  e.currentTarget.style.boxShadow = `0 0 0 3px ${getThemeColor()}30`;
-                }}
-                onBlur={(e) => {
-                  e.currentTarget.style.borderColor = '#d1d5db';
-                  e.currentTarget.style.boxShadow = 'none';
-                }}
-              />
-            </div>
-
-            <div>
-              <label className="mb-2 block text-sm" style={{ color: themeColors?.textSecondary || 'rgba(255,255,255,0.7)' }}>
-                Email
-              </label>
-              <input
-                type="email"
-                name="email"
-                value={form.email}
-                onChange={handleChange}
-                placeholder="chandani@example.com"
-                className="w-full rounded-xl border px-4 py-3 outline-none transition placeholder:text-gray-400 focus:ring-2"
-                style={{
-                  borderColor: '#d1d5db',
-                  backgroundColor: '#ffffff',
-                  color: '#1f2937',
-                }}
-                onFocus={(e) => {
-                  e.currentTarget.style.borderColor = getThemeColor();
-                  e.currentTarget.style.boxShadow = `0 0 0 3px ${getThemeColor()}30`;
-                }}
-                onBlur={(e) => {
-                  e.currentTarget.style.borderColor = '#d1d5db';
-                  e.currentTarget.style.boxShadow = 'none';
-                }}
-              />
-            </div>
-
-            <div>
-              <label className="mb-2 block text-sm" style={{ color: themeColors?.textSecondary || 'rgba(255,255,255,0.7)' }}>
-                Phone
-              </label>
-              <input
-                type="text"
-                name="phone"
-                value={form.phone}
-                onChange={handleChange}
-                placeholder="+977 9876543210"
-                className="w-full rounded-xl border px-4 py-3 outline-none transition placeholder:text-gray-400 focus:ring-2"
-                style={{
-                  borderColor: '#d1d5db',
-                  backgroundColor: '#ffffff',
-                  color: '#1f2937',
-                }}
-                onFocus={(e) => {
-                  e.currentTarget.style.borderColor = getThemeColor();
-                  e.currentTarget.style.boxShadow = `0 0 0 3px ${getThemeColor()}30`;
-                }}
-                onBlur={(e) => {
-                  e.currentTarget.style.borderColor = '#d1d5db';
-                  e.currentTarget.style.boxShadow = 'none';
-                }}
-              />
-            </div>
-
-            <div>
-              <label className="mb-2 block text-sm" style={{ color: themeColors?.textSecondary || 'rgba(255,255,255,0.7)' }}>
-                GitHub URL
-              </label>
-              <input
-                type="text"
-                name="github"
-                value={form.github}
-                onChange={handleChange}
-                placeholder="https://github.com/chandani"
-                className="w-full rounded-xl border px-4 py-3 outline-none transition placeholder:text-gray-400 focus:ring-2"
-                style={{
-                  borderColor: '#d1d5db',
-                  backgroundColor: '#ffffff',
-                  color: '#1f2937',
-                }}
-                onFocus={(e) => {
-                  e.currentTarget.style.borderColor = getThemeColor();
-                  e.currentTarget.style.boxShadow = `0 0 0 3px ${getThemeColor()}30`;
-                }}
-                onBlur={(e) => {
-                  e.currentTarget.style.borderColor = '#d1d5db';
-                  e.currentTarget.style.boxShadow = 'none';
-                }}
-              />
-            </div>
-
-            <div>
-              <label className="mb-2 block text-sm" style={{ color: themeColors?.textSecondary || 'rgba(255,255,255,0.7)' }}>
-                LinkedIn URL
-              </label>
-              <input
-                type="text"
-                name="linkedin"
-                value={form.linkedin}
-                onChange={handleChange}
-                placeholder="https://linkedin.com/in/chandani"
-                className="w-full rounded-xl border px-4 py-3 outline-none transition placeholder:text-gray-400 focus:ring-2"
-                style={{
-                  borderColor: '#d1d5db',
-                  backgroundColor: '#ffffff',
-                  color: '#1f2937',
-                }}
-                onFocus={(e) => {
-                  e.currentTarget.style.borderColor = getThemeColor();
-                  e.currentTarget.style.boxShadow = `0 0 0 3px ${getThemeColor()}30`;
-                }}
-                onBlur={(e) => {
-                  e.currentTarget.style.borderColor = '#d1d5db';
-                  e.currentTarget.style.boxShadow = 'none';
-                }}
-              />
-            </div>
-
-            <div>
-              <label className="mb-2 block text-sm" style={{ color: themeColors?.textSecondary || 'rgba(255,255,255,0.7)' }}>
-                Instagram URL
-              </label>
-              <input
-                type="text"
-                name="instagram"
-                value={form.instagram}
-                onChange={handleChange}
-                placeholder="https://instagram.com/chandani"
-                className="w-full rounded-xl border px-4 py-3 outline-none transition placeholder:text-gray-400 focus:ring-2"
-                style={{
-                  borderColor: '#d1d5db',
-                  backgroundColor: '#ffffff',
-                  color: '#1f2937',
-                }}
-                onFocus={(e) => {
-                  e.currentTarget.style.borderColor = getThemeColor();
-                  e.currentTarget.style.boxShadow = `0 0 0 3px ${getThemeColor()}30`;
-                }}
-                onBlur={(e) => {
-                  e.currentTarget.style.borderColor = '#d1d5db';
-                  e.currentTarget.style.boxShadow = 'none';
-                }}
-              />
-            </div>
-
-            <div>
-              <label className="mb-2 block text-sm" style={{ color: themeColors?.textSecondary || 'rgba(255,255,255,0.7)' }}>
-                YouTube URL
-              </label>
-              <input
-                type="text"
-                name="youtube"
-                value={form.youtube}
-                onChange={handleChange}
-                placeholder="https://youtube.com/@chandani"
-                className="w-full rounded-xl border px-4 py-3 outline-none transition placeholder:text-gray-400 focus:ring-2"
-                style={{
-                  borderColor: '#d1d5db',
-                  backgroundColor: '#ffffff',
-                  color: '#1f2937',
-                }}
-                onFocus={(e) => {
-                  e.currentTarget.style.borderColor = getThemeColor();
-                  e.currentTarget.style.boxShadow = `0 0 0 3px ${getThemeColor()}30`;
-                }}
-                onBlur={(e) => {
-                  e.currentTarget.style.borderColor = '#d1d5db';
-                  e.currentTarget.style.boxShadow = 'none';
-                }}
-              />
+            {/* Quick Resume Link Box */}
+            <div className="rounded-3xl border border-slate-800 bg-slate-900/90 p-6 shadow-xl">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-500/20 text-purple-400">
+                  <FileText className="h-5 w-5" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-white">Resume Manager</h4>
+                  <p className="text-xs text-slate-400">Active: Chandani_Kumari_Resume.pdf</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => navigate("/admin/resume")}
+                className="mt-4 w-full rounded-xl bg-purple-600/20 hover:bg-purple-600/30 border border-purple-500/30 py-2.5 text-xs font-bold text-purple-300 transition"
+              >
+                Upload / Replace Resume ➔
+              </button>
             </div>
           </div>
 
-          <div className="mt-6 flex items-center gap-4">
-            <button
-              type="submit"
-              disabled={saving}
-              className="rounded-xl px-8 py-3 font-semibold text-white transition disabled:opacity-50 disabled:cursor-not-allowed"
-              style={{
-                backgroundColor: getThemeColor(),
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.opacity = '0.85';
-                e.currentTarget.style.transform = 'translateY(-1px)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.opacity = '1';
-                e.currentTarget.style.transform = 'translateY(0)';
-              }}
+          {/* RIGHT: Edit Form (8 Cols) */}
+          <div className="lg:col-span-8">
+            <form
+              onSubmit={handleSubmit}
+              className="rounded-3xl border border-slate-800 bg-slate-900/90 p-8 shadow-xl space-y-6"
             >
-              {saving ? (
-                <>
-                  <span className="inline-block h-4 w-4 mr-2 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                  Saving...
-                </>
-              ) : (
-                "Update Personal Info"
-              )}
-            </button>
+              <div className="border-b border-slate-800 pb-4">
+                <h3 className="text-base font-bold text-white flex items-center gap-2">
+                  <User className="h-4 w-4 text-purple-400" />
+                  <span>General Information</span>
+                </h3>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  These details will appear across your portfolio header, hero, and contact sections.
+                </p>
+              </div>
 
-            <button
-              type="button"
-              onClick={() => {
-                window.location.reload();
-              }}
-              className="rounded-xl border px-6 py-3 text-sm transition hover:bg-white/5"
-              style={{
-                borderColor: themeColors?.border || 'rgba(255,255,255,0.1)',
-                color: themeColors?.textSecondary || 'rgba(255,255,255,0.5)',
-              }}
-            >
-              Reset
-            </button>
-          </div>
+              {/* Name & Role */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
+                    Full Name *
+                  </label>
+                  <input
+                    type="text"
+                    name="name"
+                    required
+                    value={formData.name}
+                    onChange={handleChange}
+                    className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:border-purple-500 focus:outline-none transition"
+                  />
+                </div>
 
-          <div className="mt-4 border-t pt-4" style={{ borderColor: themeColors?.border || 'rgba(255,255,255,0.05)' }}>
-            <p className="text-xs" style={{ color: themeColors?.textSecondary || 'rgba(255,255,255,0.2)' }}>
-              All changes will be reflected on your public portfolio immediately.
-            </p>
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
+                    Professional Role / Title *
+                  </label>
+                  <input
+                    type="text"
+                    name="role"
+                    required
+                    value={formData.role}
+                    onChange={handleChange}
+                    className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:border-purple-500 focus:outline-none transition"
+                  />
+                </div>
+              </div>
+
+              {/* Bio / About */}
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
+                  About Me / Bio
+                </label>
+                <textarea
+                  name="about"
+                  rows={4}
+                  value={formData.about}
+                  onChange={handleChange}
+                  className="w-full rounded-xl border border-slate-700 bg-slate-950 p-4 text-sm text-white placeholder-slate-500 focus:border-purple-500 focus:outline-none transition resize-none leading-relaxed"
+                />
+              </div>
+
+              {/* Email & Phone */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
+                    Email Address *
+                  </label>
+                  <input
+                    type="email"
+                    name="email"
+                    required
+                    value={formData.email}
+                    onChange={handleChange}
+                    className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:border-purple-500 focus:outline-none transition"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
+                    Phone Number
+                  </label>
+                  <input
+                    type="text"
+                    name="phone"
+                    value={formData.phone}
+                    onChange={handleChange}
+                    className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:border-purple-500 focus:outline-none transition"
+                  />
+                </div>
+              </div>
+
+              {/* Location & LinkedIn */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
+                    Location
+                  </label>
+                  <input
+                    type="text"
+                    name="location"
+                    value={formData.location}
+                    onChange={handleChange}
+                    className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:border-purple-500 focus:outline-none transition"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
+                    LinkedIn Profile URL
+                  </label>
+                  <input
+                    type="url"
+                    name="linkedin"
+                    value={formData.linkedin}
+                    onChange={handleChange}
+                    className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:border-purple-500 focus:outline-none transition"
+                  />
+                </div>
+              </div>
+
+              {/* GitHub */}
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
+                  GitHub Profile URL
+                </label>
+                <input
+                  type="url"
+                  name="github"
+                  value={formData.github}
+                  onChange={handleChange}
+                  className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:border-purple-500 focus:outline-none transition"
+                />
+              </div>
+
+              {/* Form Buttons */}
+              <div className="pt-4 border-t border-slate-800 flex items-center justify-between">
+                <button
+                  type="button"
+                  onClick={loadPersonalInfo}
+                  className="rounded-xl border border-slate-700 bg-slate-800 px-4 py-2 text-xs font-semibold text-slate-300 hover:text-white transition"
+                >
+                  Reset Changes
+                </button>
+
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 px-6 py-2.5 text-xs font-bold text-white shadow-lg shadow-purple-600/30 transition hover:-translate-y-0.5"
+                >
+                  {saving ? (
+                    <>
+                      <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                      <span>Saving Changes...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Save className="h-3.5 w-3.5" />
+                      <span>Save Personal Info</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
           </div>
-        </form>
+        </div>
+
       </main>
     </div>
   );

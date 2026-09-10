@@ -33,6 +33,27 @@ const API = axios.create({
   withCredentials: true,
 });
 
+// Attach Authorization header if admin_token exists
+API.interceptors.request.use((config) => {
+  const token = typeof window !== "undefined" ? localStorage.getItem("admin_token") : null;
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+}, (error) => Promise.reject(error));
+
+export const setAuthToken = (token) => {
+  if (token) {
+    localStorage.setItem("admin_token", token);
+    localStorage.setItem("admin_authenticated", "true");
+  }
+};
+
+export const clearAuthToken = () => {
+  localStorage.removeItem("admin_token");
+  localStorage.removeItem("admin_authenticated");
+};
+
 export const getPortfolio = async () => {
   const response = await API.get("/portfolio");
   return response.data;

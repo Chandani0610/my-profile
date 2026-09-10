@@ -34,7 +34,7 @@ export default function Contact({ contact }) {
     phone: "+977 9876543210",
     location: "Kathmandu, Nepal",
     linkedin: "https://linkedin.com/in/chandani",
-    github: "https://github.com/chandani",
+    github: "https://github.com/Chandani0610",
   };
 
   const contactItems = [

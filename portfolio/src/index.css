@@ -1,1 +1,552 @@
+@import url('https://fonts.googleapis.com/css2?family=Caveat:wght@400;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
 @import "tailwindcss";
+
+.font-script {
+  font-family: 'Caveat', cursive, sans-serif;
+}
+
+/* Frosted glass utilities */
+.glass-card {
+  background: rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+}
+
+.glass-pill {
+  background: rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* =====================================================================
+   THEME COLOR DEFINITIONS & TAILWIND V4 COLOR OVERRIDES
+   ===================================================================== */
+
+/* 1. ROYAL PURPLE (DEFAULT) */
+:root,
+[data-theme="purple"] {
+  --theme-primary: #7c3aed;
+  --theme-primary-dark: #6d28d9;
+  --theme-primary-light: #ede9fe;
+  --theme-primary-tint: #f5f3ff;
+  --theme-accent: #8b5cf6;
+  --theme-accent-light: #c4b5fd;
+  --theme-glow: rgba(124, 58, 237, 0.4);
+  --theme-glow-soft: rgba(124, 58, 237, 0.15);
+  --theme-hero-start: #6b21a8;
+  --theme-hero-via: #7e22ce;
+  --theme-hero-end: #4c1d95;
+  --theme-footer-bg: #120626;
+
+  /* Tailwind CSS v4 purple variable overrides */
+  --color-purple-50: #faf5ff;
+  --color-purple-100: #f3e8ff;
+  --color-purple-200: #e9d5ff;
+  --color-purple-300: #d8b4fe;
+  --color-purple-400: #c084fc;
+  --color-purple-500: #a855f7;
+  --color-purple-600: #7c3aed;
+  --color-purple-700: #6d28d9;
+  --color-purple-800: #5b21b6;
+  --color-purple-900: #4c1d95;
+  --color-purple-950: #2e1065;
+
+  --color-indigo-50: #eef2ff;
+  --color-indigo-100: #e0e7ff;
+  --color-indigo-500: #6366f1;
+  --color-indigo-600: #4f46e5;
+  --color-indigo-700: #4338ca;
+  --color-indigo-800: #3730a3;
+  --color-indigo-900: #312e81;
+}
+
+/* 2. EMERALD GREEN */
+[data-theme="emerald"],
+[data-theme="green"] {
+  --theme-primary: #059669;
+  --theme-primary-dark: #047857;
+  --theme-primary-light: #d1fae5;
+  --theme-primary-tint: #ecfdf5;
+  --theme-accent: #10b981;
+  --theme-accent-light: #6ee7b7;
+  --theme-glow: rgba(5, 150, 105, 0.4);
+  --theme-glow-soft: rgba(5, 150, 105, 0.15);
+  --theme-hero-start: #064e3b;
+  --theme-hero-via: #059669;
+  --theme-hero-end: #047857;
+  --theme-footer-bg: #032b20;
+
+  /* Remap ALL purple utilities to Emerald */
+  --color-purple-50: #ecfdf5;
+  --color-purple-100: #d1fae5;
+  --color-purple-200: #a7f3d0;
+  --color-purple-300: #6ee7b7;
+  --color-purple-400: #34d399;
+  --color-purple-500: #10b981;
+  --color-purple-600: #059669;
+  --color-purple-700: #047857;
+  --color-purple-800: #065f46;
+  --color-purple-900: #064e3b;
+  --color-purple-950: #022c22;
+
+  --color-indigo-50: #ecfdf5;
+  --color-indigo-100: #d1fae5;
+  --color-indigo-500: #10b981;
+  --color-indigo-600: #059669;
+  --color-indigo-700: #047857;
+  --color-indigo-800: #065f46;
+  --color-indigo-900: #064e3b;
+}
+
+/* 3. OCEAN BLUE */
+[data-theme="blue"] {
+  --theme-primary: #0284c7;
+  --theme-primary-dark: #0369a1;
+  --theme-primary-light: #bae6fd;
+  --theme-primary-tint: #f0f9ff;
+  --theme-accent: #38bdf8;
+  --theme-accent-light: #7dd3fc;
+  --theme-glow: rgba(2, 132, 199, 0.4);
+  --theme-glow-soft: rgba(2, 132, 199, 0.15);
+  --theme-hero-start: #082f49;
+  --theme-hero-via: #0284c7;
+  --theme-hero-end: #0369a1;
+  --theme-footer-bg: #05192d;
+
+  /* Remap ALL purple utilities to Ocean Blue */
+  --color-purple-50: #f0f9ff;
+  --color-purple-100: #e0f2fe;
+  --color-purple-200: #bae6fd;
+  --color-purple-300: #7dd3fc;
+  --color-purple-400: #38bdf8;
+  --color-purple-500: #0ea5e9;
+  --color-purple-600: #0284c7;
+  --color-purple-700: #0369a1;
+  --color-purple-800: #075985;
+  --color-purple-900: #0c4a6e;
+  --color-purple-950: #082f49;
+
+  --color-indigo-50: #f0f9ff;
+  --color-indigo-100: #e0f2fe;
+  --color-indigo-500: #0ea5e9;
+  --color-indigo-600: #0284c7;
+  --color-indigo-700: #0369a1;
+  --color-indigo-800: #075985;
+  --color-indigo-900: #0c4a6e;
+}
+
+/* 4. CRIMSON ROSE */
+[data-theme="rose"],
+[data-theme="red"] {
+  --theme-primary: #e11d48;
+  --theme-primary-dark: #be123c;
+  --theme-primary-light: #fecdd3;
+  --theme-primary-tint: #fff1f2;
+  --theme-accent: #f43f5e;
+  --theme-accent-light: #fda4af;
+  --theme-glow: rgba(225, 29, 72, 0.4);
+  --theme-glow-soft: rgba(225, 29, 72, 0.15);
+  --theme-hero-start: #4c0519;
+  --theme-hero-via: #be123c;
+  --theme-hero-end: #9f1239;
+  --theme-footer-bg: #2d040f;
+
+  /* Remap ALL purple utilities to Crimson Rose */
+  --color-purple-50: #fff1f2;
+  --color-purple-100: #ffe4e6;
+  --color-purple-200: #fecdd3;
+  --color-purple-300: #fda4af;
+  --color-purple-400: #fb7185;
+  --color-purple-500: #f43f5e;
+  --color-purple-600: #e11d48;
+  --color-purple-700: #be123c;
+  --color-purple-800: #9f1239;
+  --color-purple-900: #881337;
+  --color-purple-950: #4c0519;
+
+  --color-indigo-50: #fff1f2;
+  --color-indigo-100: #ffe4e6;
+  --color-indigo-500: #f43f5e;
+  --color-indigo-600: #e11d48;
+  --color-indigo-700: #be123c;
+  --color-indigo-800: #9f1239;
+  --color-indigo-900: #881337;
+}
+
+/* 5. SUNSET ORANGE */
+[data-theme="orange"] {
+  --theme-primary: #ea580c;
+  --theme-primary-dark: #c2410c;
+  --theme-primary-light: #fed7aa;
+  --theme-primary-tint: #fff7ed;
+  --theme-accent: #f97316;
+  --theme-accent-light: #fdba74;
+  --theme-glow: rgba(234, 88, 12, 0.4);
+  --theme-glow-soft: rgba(234, 88, 12, 0.15);
+  --theme-hero-start: #431407;
+  --theme-hero-via: #c2410c;
+  --theme-hero-end: #9a3412;
+  --theme-footer-bg: #260a03;
+
+  /* Remap ALL purple utilities to Sunset Orange */
+  --color-purple-50: #fff7ed;
+  --color-purple-100: #ffedd5;
+  --color-purple-200: #fed7aa;
+  --color-purple-300: #fdba74;
+  --color-purple-400: #fb923c;
+  --color-purple-500: #f97316;
+  --color-purple-600: #ea580c;
+  --color-purple-700: #c2410c;
+  --color-purple-800: #9a3412;
+  --color-purple-900: #7c2d12;
+  --color-purple-950: #431407;
+
+  --color-indigo-50: #fff7ed;
+  --color-indigo-100: #ffedd5;
+  --color-indigo-500: #f97316;
+  --color-indigo-600: #ea580c;
+  --color-indigo-700: #c2410c;
+  --color-indigo-800: #9a3412;
+  --color-indigo-900: #7c2d12;
+}
+
+/* 6. MIDNIGHT DARK */
+[data-theme="dark"] {
+  --theme-primary: #6366f1;
+  --theme-primary-dark: #4f46e5;
+  --theme-primary-light: #334155;
+  --theme-primary-tint: #1e293b;
+  --theme-accent: #818cf8;
+  --theme-accent-light: #a5b4fc;
+  --theme-glow: rgba(99, 102, 241, 0.4);
+  --theme-glow-soft: rgba(99, 102, 241, 0.15);
+  --theme-hero-start: #020617;
+  --theme-hero-via: #0f172a;
+  --theme-hero-end: #1e293b;
+  --theme-footer-bg: #020617;
+
+  /* Remap ALL purple utilities to Indigo / Slate */
+  --color-purple-50: #eef2ff;
+  --color-purple-100: #e0e7ff;
+  --color-purple-200: #c7d2fe;
+  --color-purple-300: #a5b4fc;
+  --color-purple-400: #818cf8;
+  --color-purple-500: #6366f1;
+  --color-purple-600: #4f46e5;
+  --color-purple-700: #4338ca;
+  --color-purple-800: #3730a3;
+  --color-purple-900: #312e81;
+  --color-purple-950: #1e1b4b;
+
+  --color-indigo-50: #eef2ff;
+  --color-indigo-100: #e0e7ff;
+  --color-indigo-500: #6366f1;
+  --color-indigo-600: #4f46e5;
+  --color-indigo-700: #4338ca;
+  --color-indigo-800: #3730a3;
+  --color-indigo-900: #312e81;
+}
+
+/* =====================================================================
+   COMPREHENSIVE FALLBACK REMAPPINGS FOR TEXT, HOVER, BACKGROUNDS & BORDERS
+   ===================================================================== */
+
+/* Text Colors */
+[data-theme]:not([data-theme="purple"]) .text-purple-600,
+[data-theme]:not([data-theme="purple"]) .text-purple-700,
+[data-theme]:not([data-theme="purple"]) .text-purple-800,
+[data-theme]:not([data-theme="purple"]) .text-purple-900,
+[data-theme]:not([data-theme="purple"]) .text-purple-950,
+[data-theme]:not([data-theme="purple"]) [class*="text-purple-600"],
+[data-theme]:not([data-theme="purple"]) [class*="text-purple-700"],
+[data-theme]:not([data-theme="purple"]) [class*="text-purple-800"],
+[data-theme]:not([data-theme="purple"]) [class*="text-purple-900"] {
+  color: var(--theme-primary) !important;
+}
+
+[data-theme]:not([data-theme="purple"]) .text-purple-400,
+[data-theme]:not([data-theme="purple"]) .text-purple-500,
+[data-theme]:not([data-theme="purple"]) [class*="text-purple-400"],
+[data-theme]:not([data-theme="purple"]) [class*="text-purple-500"] {
+  color: var(--theme-accent) !important;
+}
+
+[data-theme]:not([data-theme="purple"]) .text-purple-100,
+[data-theme]:not([data-theme="purple"]) .text-purple-200,
+[data-theme]:not([data-theme="purple"]) .text-purple-300,
+[data-theme]:not([data-theme="purple"]) [class*="text-purple-100"],
+[data-theme]:not([data-theme="purple"]) [class*="text-purple-200"],
+[data-theme]:not([data-theme="purple"]) [class*="text-purple-300"] {
+  color: var(--theme-accent-light) !important;
+}
+
+/* Hover text colors */
+[data-theme]:not([data-theme="purple"]) .hover\:text-purple-600:hover,
+[data-theme]:not([data-theme="purple"]) .hover\:text-purple-700:hover,
+[data-theme]:not([data-theme="purple"]) .hover\:text-purple-800:hover,
+[data-theme]:not([data-theme="purple"]) [class*="hover:text-purple-600"]:hover,
+[data-theme]:not([data-theme="purple"]) [class*="hover:text-purple-700"]:hover,
+[data-theme]:not([data-theme="purple"]) [class*="hover:text-purple-800"]:hover {
+  color: var(--theme-primary-dark) !important;
+}
+
+[data-theme]:not([data-theme="purple"]) .hover\:text-purple-300:hover,
+[data-theme]:not([data-theme="purple"]) .hover\:text-purple-400:hover,
+[data-theme]:not([data-theme="purple"]) [class*="hover:text-purple-300"]:hover,
+[data-theme]:not([data-theme="purple"]) [class*="hover:text-purple-400"]:hover {
+  color: var(--theme-accent) !important;
+}
+
+/* Group hover text colors */
+[data-theme]:not([data-theme="purple"]) .group:hover .group-hover\:text-purple-600,
+[data-theme]:not([data-theme="purple"]) .group:hover .group-hover\:text-purple-700,
+[data-theme]:not([data-theme="purple"]) .group:hover .group-hover\:text-purple-800,
+[data-theme]:not([data-theme="purple"]) .group:hover [class*="group-hover:text-purple-600"],
+[data-theme]:not([data-theme="purple"]) .group:hover [class*="group-hover:text-purple-700"],
+[data-theme]:not([data-theme="purple"]) .group:hover [class*="group-hover:text-purple-800"] {
+  color: var(--theme-primary) !important;
+}
+
+/* Backgrounds */
+[data-theme]:not([data-theme="purple"]) .bg-purple-600,
+[data-theme]:not([data-theme="purple"]) .bg-purple-700,
+[data-theme]:not([data-theme="purple"]) .bg-purple-800 {
+  background-color: var(--theme-primary) !important;
+}
+
+[data-theme]:not([data-theme="purple"]) .bg-purple-500 {
+  background-color: var(--theme-accent) !important;
+}
+
+[data-theme]:not([data-theme="purple"]) .bg-purple-50 {
+  background-color: var(--theme-primary-tint) !important;
+}
+
+[data-theme]:not([data-theme="purple"]) .bg-purple-100 {
+  background-color: var(--theme-primary-light) !important;
+}
+
+[data-theme]:not([data-theme="purple"]) [class*="bg-purple-50/"],
+[data-theme]:not([data-theme="purple"]) [class*="bg-purple-100/"],
+[data-theme]:not([data-theme="purple"]) [class*="bg-purple-500/"],
+[data-theme]:not([data-theme="purple"]) [class*="bg-purple-600/"],
+[data-theme]:not([data-theme="purple"]) [class*="bg-purple-900/"],
+[data-theme]:not([data-theme="purple"]) [class*="bg-purple-950/"] {
+  background-color: var(--theme-glow-soft) !important;
+}
+
+/* Borders */
+[data-theme]:not([data-theme="purple"]) .border-purple-600,
+[data-theme]:not([data-theme="purple"]) .border-purple-500,
+[data-theme]:not([data-theme="purple"]) .border-purple-400 {
+  border-color: var(--theme-primary) !important;
+}
+
+[data-theme]:not([data-theme="purple"]) .border-purple-300,
+[data-theme]:not([data-theme="purple"]) .border-purple-200 {
+  border-color: var(--theme-accent-light) !important;
+}
+
+[data-theme]:not([data-theme="purple"]) .border-purple-100 {
+  border-color: var(--theme-primary-tint) !important;
+}
+
+[data-theme]:not([data-theme="purple"]) [class*="border-purple-"] {
+  border-color: var(--theme-glow) !important;
+}
+
+/* Rings & Focus */
+[data-theme]:not([data-theme="purple"]) [class*="ring-purple-"] {
+  --tw-ring-color: var(--theme-glow) !important;
+}
+
+[data-theme]:not([data-theme="purple"]) [class*="focus:ring-purple-"]:focus {
+  --tw-ring-color: var(--theme-glow) !important;
+}
+
+[data-theme]:not([data-theme="purple"]) [class*="focus:border-purple-"]:focus {
+  border-color: var(--theme-primary) !important;
+}
+
+[data-theme] .contact-form-input:focus,
+[data-theme]:not([data-theme="purple"]) input:focus,
+[data-theme]:not([data-theme="purple"]) textarea:focus {
+  border-color: var(--theme-primary) !important;
+  box-shadow: 0 0 0 3px var(--theme-glow-soft) !important;
+  background-color: #ffffff !important;
+}
+
+/* Gradients */
+[data-theme]:not([data-theme="purple"]) .from-purple-500,
+[data-theme]:not([data-theme="purple"]) .from-purple-600,
+[data-theme]:not([data-theme="purple"]) .from-purple-700,
+[data-theme]:not([data-theme="purple"]) .from-purple-800,
+[data-theme]:not([data-theme="purple"]) [class*="from-purple-"] {
+  --tw-gradient-from: var(--theme-primary) !important;
+}
+
+[data-theme]:not([data-theme="purple"]) .to-purple-500,
+[data-theme]:not([data-theme="purple"]) .to-purple-600,
+[data-theme]:not([data-theme="purple"]) .to-purple-700,
+[data-theme]:not([data-theme="purple"]) .to-purple-800,
+[data-theme]:not([data-theme="purple"]) .to-indigo-500,
+[data-theme]:not([data-theme="purple"]) .to-indigo-600,
+[data-theme]:not([data-theme="purple"]) .to-indigo-700,
+[data-theme]:not([data-theme="purple"]) .to-indigo-800,
+[data-theme]:not([data-theme="purple"]) [class*="to-indigo-"],
+[data-theme]:not([data-theme="purple"]) [class*="to-purple-"] {
+  --tw-gradient-to: var(--theme-primary-dark) !important;
+}
+
+[data-theme]:not([data-theme="purple"]) .via-purple-500,
+[data-theme]:not([data-theme="purple"]) .via-purple-600,
+[data-theme]:not([data-theme="purple"]) .via-indigo-500,
+[data-theme]:not([data-theme="purple"]) .via-indigo-600,
+[data-theme]:not([data-theme="purple"]) [class*="via-purple-"],
+[data-theme]:not([data-theme="purple"]) [class*="via-indigo-"] {
+  --tw-gradient-via: var(--theme-accent) !important;
+}
+
+/* Contact Section Theme Buttons */
+.contact-submit-btn {
+  background: linear-gradient(135deg, var(--theme-primary, #7c3aed), var(--theme-primary-dark, #6d28d9)) !important;
+  box-shadow: 0 4px 14px 0 var(--theme-glow, rgba(124, 58, 237, 0.25)) !important;
+}
+
+.contact-submit-btn:hover:not(:disabled) {
+  filter: brightness(1.1);
+  box-shadow: 0 6px 20px 0 var(--theme-glow, rgba(124, 58, 237, 0.35)) !important;
+  transform: translateY(-1px);
+}
+
+.contact-submit-btn:active:not(:disabled) {
+  transform: scale(0.99);
+}
+
+.contact-get-in-touch-btn {
+  background: linear-gradient(135deg, var(--theme-primary, #7c3aed), var(--theme-primary-dark, #6d28d9)) !important;
+  box-shadow: 0 4px 14px 0 var(--theme-glow, rgba(124, 58, 237, 0.25)) !important;
+}
+
+.contact-get-in-touch-btn:hover {
+  filter: brightness(1.1);
+  box-shadow: 0 6px 20px 0 var(--theme-glow, rgba(124, 58, 237, 0.35)) !important;
+  transform: scale(1.03);
+}
+
+/* Focus Architecture Badge Theme Gradient (matches Send Button) */
+.focus-architecture-badge {
+  background: linear-gradient(135deg, var(--theme-primary, #7c3aed), var(--theme-primary-dark, #6d28d9)) !important;
+  box-shadow: 0 4px 14px 0 var(--theme-glow, rgba(124, 58, 237, 0.25)) !important;
+}
+
+.focus-architecture-badge:hover {
+  filter: brightness(1.08);
+  box-shadow: 0 6px 20px 0 var(--theme-glow, rgba(124, 58, 237, 0.35)) !important;
+  transform: translateY(-1px);
+}
+
+/* Header Navbar Theme Synchronization */
+.header-nav-item {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.header-nav-item:hover:not(.header-nav-active) {
+  color: var(--theme-primary) !important;
+  background-color: var(--theme-glow-soft) !important;
+}
+
+.header-nav-active {
+  color: var(--theme-primary) !important;
+  background-color: var(--theme-glow-soft) !important;
+}
+
+.header-active-bar {
+  background: var(--theme-primary) !important;
+  box-shadow: 0 2px 8px var(--theme-glow) !important;
+}
+
+.header-resume-btn {
+  background: linear-gradient(135deg, var(--theme-primary, #7c3aed), var(--theme-primary-dark, #6d28d9)) !important;
+  box-shadow: 0 4px 14px 0 var(--theme-glow, rgba(124, 58, 237, 0.25)) !important;
+}
+
+.header-resume-btn:hover {
+  filter: brightness(1.1);
+  box-shadow: 0 6px 20px 0 var(--theme-glow, rgba(124, 58, 237, 0.35)) !important;
+  transform: translateY(-1px);
+}
+
+/* Glow shadows */
+[data-theme]:not([data-theme="purple"]) [class*="shadow-purple"] {
+  --tw-shadow-color: var(--theme-glow) !important;
+}
+
+/* Hero, Featured Project, Footer & CK Section specifically */
+[data-theme]:not([data-theme="purple"]) .hero-banner,
+[data-theme]:not([data-theme="purple"]) .featured-project-card {
+  background: linear-gradient(135deg, var(--theme-hero-start) 0%, var(--theme-hero-via) 50%, var(--theme-hero-end) 100%) !important;
+}
+
+[data-theme]:not([data-theme="purple"]) .ck-monogram-badge {
+  background: linear-gradient(135deg, var(--theme-primary) 0%, var(--theme-primary-dark) 100%) !important;
+  box-shadow: 0 4px 14px 0 var(--theme-glow) !important;
+}
+
+[data-theme]:not([data-theme="purple"]) footer#contact,
+[data-theme]:not([data-theme="purple"]) footer#footer,
+[data-theme]:not([data-theme="purple"]) .footer-section {
+  background-color: var(--theme-footer-bg) !important;
+  border-top-color: var(--theme-glow-soft) !important;
+}
+
+/* SVG icons stroke / fill */
+[data-theme]:not([data-theme="purple"]) svg[class*="text-purple-600"],
+[data-theme]:not([data-theme="purple"]) svg[class*="text-purple-700"],
+[data-theme]:not([data-theme="purple"]) svg[class*="text-purple-800"] {
+  color: var(--theme-primary) !important;
+}
+
+[data-theme]:not([data-theme="purple"]) svg[class*="text-purple-300"],
+[data-theme]:not([data-theme="purple"]) svg[class*="text-purple-400"] {
+  color: var(--theme-accent) !important;
+}
+
+[data-theme]:not([data-theme="purple"]) .fill-purple-400,
+[data-theme]:not([data-theme="purple"]) [class*="fill-purple-"] {
+  fill: var(--theme-accent) !important;
+}
+
+/* Hover backgrounds & borders */
+[data-theme]:not([data-theme="purple"]) .hover\:bg-purple-700:hover,
+[data-theme]:not([data-theme="purple"]) .hover\:bg-purple-800:hover,
+[data-theme]:not([data-theme="purple"]) [class*="hover:bg-purple-700"]:hover,
+[data-theme]:not([data-theme="purple"]) [class*="hover:bg-purple-800"]:hover {
+  background-color: var(--theme-primary-dark) !important;
+}
+
+[data-theme]:not([data-theme="purple"]) .hover\:bg-purple-50:hover,
+[data-theme]:not([data-theme="purple"]) .hover\:bg-purple-100:hover,
+[data-theme]:not([data-theme="purple"]) [class*="hover:bg-purple-50"]:hover,
+[data-theme]:not([data-theme="purple"]) [class*="hover:bg-purple-100"]:hover {
+  background-color: var(--theme-primary-light) !important;
+}
+
+[data-theme]:not([data-theme="purple"]) .hover\:border-purple-300:hover,
+[data-theme]:not([data-theme="purple"]) .hover\:border-purple-400:hover,
+[data-theme]:not([data-theme="purple"]) [class*="hover:border-purple-"]:hover {
+  border-color: var(--theme-primary) !important;
+}
+
+/* Group hover backgrounds & borders */
+[data-theme]:not([data-theme="purple"]) .group:hover [class*="group-hover:bg-purple-50"],
+[data-theme]:not([data-theme="purple"]) .group:hover [class*="group-hover:bg-purple-100"] {
+  background-color: var(--theme-primary-light) !important;
+}
+
+[data-theme]:not([data-theme="purple"]) .group:hover [class*="group-hover:border-purple-"] {
+  border-color: var(--theme-accent-light) !important;
+}
+

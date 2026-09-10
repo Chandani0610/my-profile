@@ -41,7 +41,7 @@
 const mysql = require("mysql2/promise");
 require("dotenv").config();
 
-const poolConfig = {
+const primaryConfig = {
   host: process.env.DB_HOST || "localhost",
   user: process.env.DB_USER || "root",
   password: process.env.DB_PASSWORD || "",
@@ -53,27 +53,26 @@ const poolConfig = {
 };
 
 if (process.env.DB_SSL === "true" || process.env.DB_SSL === true) {
-  poolConfig.ssl = {
+  primaryConfig.ssl = {
     rejectUnauthorized: false,
   };
 }
 
-const pool = mysql.createPool(poolConfig);
+let activePool = mysql.createPool(primaryConfig);
 
-const testConnection = async () => {
+// Resilient pool proxy that always delegates to activePool
+const pool = new Proxy({}, {
+  get(target, prop) {
+    const val = activePool[prop];
+    if (typeof val === "function") {
+      return val.bind(activePool);
+    }
+    return val;
+  },
+});
+
+const ensureSchema = async (connection) => {
   try {
-    const connection = await pool.getConnection();
-
-    console.log("=================================");
-    console.log("✅ MySQL Database Connected");
-    console.log("=================================");
-    console.log(`🌐 Host: ${process.env.DB_HOST || "localhost"}`);
-    console.log(`🔌 Port: ${process.env.DB_PORT || 3306}`);
-    console.log(`📦 Database: ${process.env.DB_NAME || "portfolio"}`);
-    console.log(`👤 User: ${process.env.DB_USER || "root"}`);
-    console.log(`🔐 SSL: ${process.env.DB_SSL === "true" ? "Enabled" : "Disabled"}`);
-    console.log("=================================");
-
     // Ensure settings table exists
     await connection.query(`
       CREATE TABLE IF NOT EXISTS portfolio_settings (
@@ -83,25 +82,91 @@ const testConnection = async () => {
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
       );
     `);
-    await connection.query(`
-      INSERT INTO portfolio_settings (setting_key, setting_value)
-      VALUES ('theme', 'purple')
-      ON DUPLICATE KEY UPDATE setting_value = setting_value;
-    `);
 
+    // Ensure image column exists in projects table
+    try {
+      await connection.query(`
+        ALTER TABLE projects ADD COLUMN image VARCHAR(255) DEFAULT NULL
+      `);
+    } catch (err) {
+      if (err.code !== "ER_DUP_FIELDNAME") {
+        // Table might not exist yet if fresh DB
+      }
+    }
+  } catch (err) {
+    console.warn("Schema initialization notice:", err.message);
+  }
+};
+
+const testConnection = async () => {
+  try {
+    const connection = await activePool.getConnection();
+
+    console.log("=================================");
+    console.log("✅ MySQL Database Connected (Primary)");
+    console.log("=================================");
+    console.log(`🌐 Host: ${primaryConfig.host}`);
+    console.log(`🔌 Port: ${primaryConfig.port}`);
+    console.log(`📦 Database: ${primaryConfig.database}`);
+    console.log(`👤 User: ${primaryConfig.user}`);
+    console.log(`🔐 SSL: ${process.env.DB_SSL === "true" ? "Enabled" : "Disabled"}`);
+    console.log("=================================");
+
+    await ensureSchema(connection);
     connection.release();
-  } catch (error) {
-    console.error("=================================");
-    console.error("❌ Aiven MySQL Connection Failed");
-    console.error("=================================");
-    console.error("Error:", error.message);
-    console.error("=================================");
+  } catch (primaryError) {
+    console.warn("=================================");
+    console.warn("⚠️ Primary MySQL Connection Failed");
+    console.warn("=================================");
+    console.warn(`Host: ${primaryConfig.host}`);
+    console.warn(`Error: ${primaryError.message}`);
+    if (primaryError.code === "ENOTFOUND") {
+      console.warn("👉 Diagnosis: Hostname cannot be resolved (DNS name does not exist).");
+      console.warn("   Your Aiven cloud service may be paused, powered off, or expired in the Aiven Console (https://console.aiven.io).");
+    }
+    console.warn("=================================");
 
-    process.exit(1);
+    // Attempt automatic fallback to local database
+    const localHost = process.env.LOCAL_DB_HOST || "localhost";
+    console.log(`🔄 Attempting automatic fallback to Local MySQL (${localHost})...`);
+
+    try {
+      const fallbackConfig = {
+        host: localHost,
+        user: process.env.LOCAL_DB_USER || "root",
+        password: process.env.LOCAL_DB_PASSWORD || "",
+        database: process.env.LOCAL_DB_NAME || "portfolio",
+        port: Number(process.env.LOCAL_DB_PORT) || 3306,
+        waitForConnections: true,
+        connectionLimit: 10,
+        queueLimit: 0,
+      };
+
+      const fallbackPool = mysql.createPool(fallbackConfig);
+      const fallbackConnection = await fallbackPool.getConnection();
+      activePool = fallbackPool;
+
+      console.log("=================================");
+      console.log("✅ Fallback to Local MySQL Connected Successfully");
+      console.log("=================================");
+      console.log(`🌐 Host: ${fallbackConfig.host}`);
+      console.log(`🔌 Port: ${fallbackConfig.port}`);
+      console.log(`📦 Database: ${fallbackConfig.database}`);
+      console.log("=================================");
+
+      await ensureSchema(fallbackConnection);
+      fallbackConnection.release();
+    } catch (fallbackError) {
+      console.error("=================================");
+      console.error("❌ Both Primary and Fallback Database Connections Failed");
+      console.error("Fallback Error:", fallbackError.message);
+      console.error("=================================");
+      process.exit(1);
+    }
   }
 };
 
 module.exports = {
   pool,
   testConnection,
-};
+};

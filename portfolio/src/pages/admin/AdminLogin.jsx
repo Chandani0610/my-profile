@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import API from "../../services/api";
+import { useNavigate, Link } from "react-router-dom";
+import { Lock, Mail, Eye, EyeOff, ShieldCheck, ArrowLeft, KeyRound, Sparkles } from "lucide-react";
+import API, { setAuthToken } from "../../services/api";
 
 export default function AdminLogin() {
   const navigate = useNavigate();
@@ -25,7 +26,6 @@ export default function AdminLogin() {
         }
       } catch {
         // Not authenticated, stay on login page
-        console.log("Not authenticated");
       }
     };
 
@@ -37,16 +37,14 @@ export default function AdminLogin() {
       ...formData,
       [e.target.name]: e.target.value,
     });
-    // Clear error when user types
     if (error) setError("");
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // Validate inputs
     if (!formData.email || !formData.password) {
-      setError("⚠️ Please enter both email and password.");
+      setError("Please provide both email and password.");
       return;
     }
 
@@ -54,25 +52,25 @@ export default function AdminLogin() {
     setLoading(true);
 
     try {
-      const response = await API.post(
-        "/admin/login",
-        formData
-      );
+      const response = await API.post("/admin/login", formData);
 
       if (response.data.success) {
-        // Store remember me preference
+        if (response.data.token) {
+          setAuthToken(response.data.token);
+        } else {
+          localStorage.setItem("admin_authenticated", "true");
+        }
         if (rememberMe) {
           localStorage.setItem("rememberMe", "true");
         } else {
           localStorage.removeItem("rememberMe");
         }
-        
         navigate("/admin/dashboard");
       }
-    } catch (error) {
+    } catch (err) {
       setError(
-        error.response?.data?.message ||
-          "❌ Login failed. Please check your credentials and try again."
+        err.response?.data?.message ||
+          "Authentication failed. Please verify your credentials."
       );
     } finally {
       setLoading(false);
@@ -80,57 +78,72 @@ export default function AdminLogin() {
   };
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center bg-slate-950 px-4 overflow-hidden">
-      
-      {/* Background decoration */}
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute -top-40 -right-40 h-80 w-80 rounded-full bg-cyan-500/10 blur-3xl" />
-        <div className="absolute -bottom-40 -left-40 h-80 w-80 rounded-full bg-blue-500/10 blur-3xl" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-96 w-96 rounded-full bg-purple-500/5 blur-3xl" />
+    <div className="relative flex min-h-screen items-center justify-center bg-[#070b14] px-4 py-12 text-slate-100 overflow-hidden select-none">
+      {/* Ambient background glows */}
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        <div className="absolute -top-32 -left-32 h-96 w-96 rounded-full bg-purple-600/15 blur-[120px]" />
+        <div className="absolute -bottom-32 -right-32 h-96 w-96 rounded-full bg-indigo-600/15 blur-[120px]" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-[500px] w-[500px] rounded-full bg-cyan-600/10 blur-[150px]" />
+        {/* Subtle grid backdrop */}
+        <div className="absolute inset-0 bg-[radial-gradient(#ffffff08_1px,transparent_1px)] [background-size:24px_24px]" />
       </div>
 
-      <div className="relative w-full max-w-md">
-        
-        {/* Main card */}
-        <div className="rounded-2xl border border-white/10 bg-white/5 p-8 shadow-2xl backdrop-blur-xl transition-all duration-300 hover:border-white/20">
+      {/* Back to Live Portfolio link */}
+      <div className="absolute top-6 left-6 z-20">
+        <Link
+          to="/"
+          className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-[#0d1527]/70 px-4 py-2 text-xs font-semibold text-slate-300 backdrop-blur-md transition-all hover:border-purple-500/40 hover:bg-[#131f38] hover:text-white"
+        >
+          <ArrowLeft className="h-4 w-4 text-purple-400" />
+          Back to Live Portfolio
+        </Link>
+      </div>
+
+      <div className="relative z-10 w-full max-w-md">
+        {/* Main Card */}
+        <div className="rounded-3xl border border-white/10 bg-[#0d1527]/85 p-8 sm:p-10 shadow-[0_20px_60px_rgba(0,0,0,0.7)] backdrop-blur-2xl transition-all duration-300">
           
-          {/* Logo / Icon */}
+          {/* Header & Logo */}
           <div className="mb-8 text-center">
-            <div className="relative mb-4 inline-block">
-              <div className="absolute inset-0 rounded-full bg-cyan-500/20 blur-xl" />
-              <div className="relative flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-cyan-500 to-blue-500 text-4xl shadow-lg">
-                👩‍💻
+            <div className="relative mb-5 inline-block">
+              <div className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-purple-600 via-indigo-600 to-cyan-500 opacity-60 blur-lg transition duration-500 hover:opacity-100" />
+              <div className="relative flex h-16 w-16 items-center justify-center rounded-2xl border border-white/20 bg-[#0a0f1d] shadow-2xl">
+                <KeyRound className="h-8 w-8 text-purple-400" />
               </div>
             </div>
 
-            <h1 className="text-3xl font-bold text-white">
+            <div className="inline-flex items-center gap-1.5 rounded-full border border-purple-500/30 bg-purple-500/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-purple-300 mb-3">
+              <Sparkles className="h-3 w-3 text-purple-400 animate-pulse" />
+              Admin Portal
+            </div>
+
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
               Welcome Back
             </h1>
-
-            <p className="mt-2 text-sm text-white/50">
-              Sign in to manage your portfolio
+            <p className="mt-1 text-xs sm:text-sm text-slate-400">
+              Sign in with your master credentials to manage portfolio
             </p>
           </div>
 
-          {/* Error message */}
+          {/* Error Alert */}
           {error && (
-            <div className="mb-5 animate-shake rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">
-              {error}
+            <div className="mb-6 flex items-start gap-3 rounded-2xl border border-red-500/30 bg-red-500/10 p-3.5 text-xs text-red-300">
+              <ShieldCheck className="h-4 w-4 text-red-400 shrink-0 mt-0.5" />
+              <div className="flex-1">{error}</div>
             </div>
           )}
 
-          {/* Login form */}
-          <form onSubmit={handleSubmit} className="space-y-5">
-            
-            {/* Email field */}
+          {/* Form */}
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Email Field */}
             <div>
-              <label className="mb-2 block text-sm font-medium text-white/70">
+              <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-slate-300">
                 Email Address
               </label>
               <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30">
-                  📧
-                </span>
+                <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-400">
+                  <Mail className="h-4 w-4" />
+                </div>
                 <input
                   type="email"
                   name="email"
@@ -139,110 +152,92 @@ export default function AdminLogin() {
                   placeholder="admin@example.com"
                   required
                   autoComplete="email"
-                  className="w-full rounded-xl border border-white/10 bg-black/20 pl-10 pr-4 py-3 text-white outline-none transition placeholder:text-white/20 focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 hover:border-white/20"
+                  className="w-full rounded-xl border border-white/10 bg-[#070b14]/80 pl-10 pr-4 py-3 text-sm text-white placeholder-slate-500 outline-none transition-all duration-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20"
                 />
               </div>
             </div>
 
-            {/* Password field */}
+            {/* Password Field */}
             <div>
-              <div className="mb-2 flex items-center justify-between">
-                <label className="block text-sm font-medium text-white/70">
-                  Password
+              <div className="mb-1.5 flex items-center justify-between">
+                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300">
+                  Master Password
                 </label>
-                <button
-                  type="button"
-                  onClick={() => navigate("/admin/forgot-password")}
-                  className="text-xs text-white/30 transition hover:text-cyan-400"
+                <Link
+                  to="/admin/forgot-password"
+                  className="text-xs text-purple-400 transition hover:text-purple-300 hover:underline"
                 >
-                  Forgot password?
-                </button>
+                  Forgot?
+                </Link>
               </div>
               <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30">
-                  🔒
-                </span>
+                <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-400">
+                  <Lock className="h-4 w-4" />
+                </div>
                 <input
                   type={showPassword ? "text" : "password"}
                   name="password"
                   value={formData.password}
                   onChange={handleChange}
-                  placeholder="Enter your password"
+                  placeholder="••••••••••••"
                   required
                   autoComplete="current-password"
-                  className="w-full rounded-xl border border-white/10 bg-black/20 pl-10 pr-12 py-3 text-white outline-none transition placeholder:text-white/20 focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 hover:border-white/20"
+                  className="w-full rounded-xl border border-white/10 bg-[#070b14]/80 pl-10 pr-11 py-3 text-sm text-white placeholder-slate-500 outline-none transition-all duration-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 transition hover:text-white/60"
+                  className="absolute inset-y-0 right-0 flex items-center pr-3.5 text-slate-400 transition hover:text-slate-200"
+                  tabIndex={-1}
                 >
-                  {showPassword ? "👁️" : "👁️‍🗨️"}
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
             </div>
 
-            {/* Remember me checkbox */}
-            <div className="flex items-center justify-between">
-              <label className="flex cursor-pointer items-center gap-2 text-sm text-white/50">
+            {/* Remember Me */}
+            <div className="flex items-center justify-between pt-1">
+              <label className="flex cursor-pointer items-center gap-2 text-xs text-slate-400 transition hover:text-slate-300">
                 <input
                   type="checkbox"
                   checked={rememberMe}
                   onChange={(e) => setRememberMe(e.target.checked)}
-                  className="h-4 w-4 rounded border-white/10 bg-black/20 text-cyan-500 focus:ring-cyan-500 focus:ring-offset-0"
+                  className="h-4 w-4 rounded border-white/10 bg-[#070b14] text-purple-600 focus:ring-purple-500 focus:ring-offset-0"
                 />
                 Remember me
               </label>
-              <span className="text-xs text-white/20">
-                Secure login
+              <span className="flex items-center gap-1 text-[11px] text-slate-500">
+                <ShieldCheck className="h-3.5 w-3.5 text-emerald-400" />
+                256-bit SSL Encrypted
               </span>
             </div>
 
-            {/* Submit button */}
+            {/* Submit Button */}
             <button
               type="submit"
               disabled={loading}
-              className="relative w-full overflow-hidden rounded-xl bg-gradient-to-r from-cyan-500 to-blue-500 px-4 py-3 font-semibold text-white transition-all duration-300 hover:scale-[1.02] hover:shadow-lg hover:shadow-cyan-500/25 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100"
+              className="group relative w-full overflow-hidden rounded-xl bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-600 bg-[length:200%_auto] px-4 py-3.5 font-semibold text-white shadow-lg shadow-purple-600/25 transition-all duration-300 hover:bg-[position:right_center] hover:shadow-purple-600/40 hover:scale-[1.01] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50 mt-2"
             >
               {loading ? (
-                <span className="flex items-center justify-center gap-2">
-                  <span className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                  Signing in...
+                <span className="flex items-center justify-center gap-2 text-sm">
+                  <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                  Authenticating...
                 </span>
               ) : (
-                "Sign In"
+                <span className="flex items-center justify-center gap-2 text-sm">
+                  <span>Access Admin Console</span>
+                </span>
               )}
             </button>
-
-            {/* Demo credentials hint */}
-            <div className="mt-4 rounded-lg border border-white/5 bg-white/5 p-3 text-center">
-              <p className="text-xs text-white/30">
-                Demo: admin@example.com / password123
-              </p>
-            </div>
-
           </form>
 
-          {/* Footer */}
-          <div className="mt-6 text-center">
-            <p className="text-xs text-white/20">
-              Chandani Portfolio Admin Panel v1.0
-            </p>
+
+          {/* Version / Copyright */}
+          <div className="mt-6 text-center text-[11px] text-slate-500">
+            Chandani Portfolio Console • Security v2.4
           </div>
         </div>
       </div>
-
-      {/* Custom CSS for shake animation */}
-      <style jsx>{`
-        @keyframes shake {
-          0%, 100% { transform: translateX(0); }
-          10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
-          20%, 40%, 60%, 80% { transform: translateX(5px); }
-        }
-        .animate-shake {
-          animation: shake 0.5s ease-in-out;
-        }
-      `}</style>
     </div>
   );
 }

@@ -1,5 +1,20 @@
+// pages/admin/AdminEducation.jsx
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { 
+  GraduationCap, 
+  Plus, 
+  Pencil, 
+  Trash2, 
+  ExternalLink, 
+  Search, 
+  Sparkles, 
+  CheckCircle2, 
+  AlertCircle, 
+  RefreshCw, 
+  Calendar,
+  Building2,
+  Award
+} from "lucide-react";
 
 import API from "../../services/api";
 import AdminSidebar from "../../components/admin/AdminSidebar";
@@ -8,1280 +23,430 @@ import { useTheme } from "../../context/ThemeContext";
 const emptyEducation = {
   degree: "",
   college: "",
-  startMonth: "",
-  startYear: "",
-  endMonth: "",
-  endYear: "",
-  isCurrent: false,
   marks: "",
+  year: "",
 };
 
 export default function AdminEducation() {
-  const navigate = useNavigate();
-  const { themeColors, currentTheme } = useTheme();
+  const { currentTheme } = useTheme();
 
-  // State for CRUD operations
-  const [education, setEducation] = useState([]);
+  const [educationList, setEducationList] = useState([]);
   const [form, setForm] = useState(emptyEducation);
   const [editingId, setEditingId] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
-
-  // UI state
+  const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState("");
-  const [searchTerm, setSearchTerm] = useState("");
-  const [sortBy, setSortBy] = useState("year");
-  const [sortOrder, setSortOrder] = useState("desc");
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(10);
-  const [selectedIds, setSelectedIds] = useState([]);
 
-  // Month options
-  const months = [
-    "January", "February", "March", "April", "May", "June",
-    "July", "August", "September", "October", "November", "December"
-  ];
-
-  // Year options (current year - 30 years to current year)
-  const currentYear = new Date().getFullYear();
-  const years = Array.from({ length: 31 }, (_, i) => currentYear - 30 + i);
-
-  // Theme color swatches
-  const themeColorSwatches = {
-    blue: '#08bde0',
-    purple: '#7c3aed',
-    green: '#059669',
-    red: '#dc2626',
-    orange: '#ea580c',
-    dark: '#38bdf8',
-  };
-
-  const getThemeColor = () => {
-    return themeColorSwatches[currentTheme] || themeColorSwatches.blue;
-  };
-
-  // Show message helper
-  const showMessage = (msg, type = "success") => {
+  const showToast = (msg, type = "success") => {
     setMessage(msg);
     setMessageType(type);
     setTimeout(() => {
       setMessage("");
       setMessageType("");
-    }, 5000);
+    }, 4500);
   };
 
-  // READ - Load education
   const loadEducation = async () => {
     try {
       setLoading(true);
-      const response = await API.get("/portfolio");
-
-      if (response.data.success) {
-        let eduData = response.data.data.education || [];
-        
-        if (Array.isArray(eduData)) {
-          eduData = eduData.filter(item => item != null);
-        } else {
-          eduData = [];
+      let list = [];
+      try {
+        const res = await API.get("/admin/education");
+        if (res.data?.success && Array.isArray(res.data.data)) {
+          list = res.data.data;
         }
-        
-        // Ensure each education entry has an ID and proper field mapping
-        eduData = eduData.map((item, index) => ({
-          ...item,
-          id: item.id || `edu-${Date.now()}-${index}-${Math.random().toString(36).substr(2, 9)}`,
-          college: item.college || item.institution || "",
-          marks: item.marks || item.score || "",
-        }));
-        
-        setEducation(eduData);
-      } else {
-        setEducation([]);
+      } catch {
+        // fallback
       }
-    } catch (error) {
-      console.error("Failed to load education:", error);
-      showMessage("❌ Failed to load education.", "error");
-      setEducation([]);
+
+      if (list.length === 0) {
+        try {
+          const pRes = await API.get("/portfolio");
+          if (pRes.data?.success && Array.isArray(pRes.data.data?.education)) {
+            list = pRes.data.data.education;
+          }
+        } catch {
+          // fallback
+        }
+      }
+
+      setEducationList(list);
+    } catch (err) {
+      console.error("Load education error:", err);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      loadEducation();
-    }, 0);
-
-    return () => {
-      clearTimeout(timeoutId);
-    };
+    loadEducation();
   }, []);
 
-  // HANDLE FORM INPUT
   const handleChange = (e) => {
-    const { name, value, type, checked } = e.target;
+    const { name, value } = e.target;
+    setForm((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!form.degree.trim() || !form.college.trim()) {
+      showToast("Please provide degree and college name", "error");
+      return;
+    }
+
+    try {
+      setSaving(true);
+      if (editingId) {
+        await API.put("/admin/education/" + editingId, form);
+        showToast("Education record updated successfully!", "success");
+      } else {
+        await API.post("/admin/education", form);
+        showToast("Education record added successfully!", "success");
+      }
+
+      setForm(emptyEducation);
+      setEditingId(null);
+      await loadEducation();
+    } catch (error) {
+      showToast(error.response?.data?.message || "Failed to save education record", "error");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleEdit = (item) => {
+    setEditingId(item.id);
     setForm({
-      ...form,
-      [name]: type === "checkbox" ? checked : value,
+      degree: item.degree || "",
+      college: item.college || item.institution || "",
+      marks: item.marks || item.score || "",
+      year: item.year || "",
     });
-    if (message) setMessage("");
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  // Format year for display (combines start and end)
-  const formatYearDisplay = (startMonth, startYear, endMonth, endYear, isCurrent) => {
-    const start = `${startMonth || ""} ${startYear || ""}`.trim();
-    const end = isCurrent ? "Present" : `${endMonth || ""} ${endYear || ""}`.trim();
-    return `${start} - ${end}`;
-  };
-
-  // CREATE - Add new education
-  const handleCreate = async () => {
-    if (!form.degree.trim()) {
-      showMessage("⚠️ Please enter the degree.", "warning");
-      return false;
+  const handleDelete = async (id, title) => {
+    if (!window.confirm("Are you sure you want to delete \"" + (title || "this record") + "\"?")) {
+      return;
     }
-
-    if (!form.college.trim()) {
-      showMessage("⚠️ Please enter the college/institution.", "warning");
-      return false;
-    }
-
-    if (!form.startMonth || !form.startYear) {
-      showMessage("⚠️ Please select the start month and year.", "warning");
-      return false;
-    }
-
-    if (!form.isCurrent && (!form.endMonth || !form.endYear)) {
-      showMessage("⚠️ Please select the end month and year.", "warning");
-      return false;
-    }
-
-    if (!form.marks.trim()) {
-      showMessage("⚠️ Please enter the marks/score.", "warning");
-      return false;
-    }
-
-    // Validate date range
-    const startDate = new Date(form.startYear, months.indexOf(form.startMonth));
-    const endDate = form.isCurrent ? new Date() : new Date(form.endYear, months.indexOf(form.endMonth));
-    
-    if (!form.isCurrent && startDate > endDate) {
-      showMessage("⚠️ Start date cannot be after end date.", "warning");
-      return false;
-    }
-
-    // Format year for display
-    const yearDisplay = formatYearDisplay(
-      form.startMonth, form.startYear,
-      form.endMonth, form.endYear,
-      form.isCurrent
-    );
-
-    setSaving(true);
-    setMessage("");
 
     try {
-      const response = await API.post("/admin/education", {
-        degree: form.degree,
-        college: form.college,
-        year: yearDisplay,
-        marks: form.marks,
-        startMonth: form.startMonth,
-        startYear: form.startYear,
-        endMonth: form.endMonth,
-        endYear: form.endYear,
-        isCurrent: form.isCurrent,
-      });
-      
-      if (response.data.success) {
-        showMessage("✅ Education added successfully!", "success");
-        setForm(emptyEducation);
-        await loadEducation();
-        return true;
-      }
-      return false;
+      setDeletingId(id);
+      await API.delete("/admin/education/" + id);
+      showToast("Education record deleted.", "success");
+      await loadEducation();
     } catch (error) {
-      console.error("Create error:", error);
-      const errorMsg = error.response?.data?.message || "❌ Failed to create education.";
-      showMessage(errorMsg, "error");
-      return false;
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  // UPDATE - Edit existing education
-  const handleUpdate = async () => {
-    if (!form.degree.trim()) {
-      showMessage("⚠️ Please enter the degree.", "warning");
-      return false;
-    }
-
-    if (!form.college.trim()) {
-      showMessage("⚠️ Please enter the college/institution.", "warning");
-      return false;
-    }
-
-    if (!form.startMonth || !form.startYear) {
-      showMessage("⚠️ Please select the start month and year.", "warning");
-      return false;
-    }
-
-    if (!form.isCurrent && (!form.endMonth || !form.endYear)) {
-      showMessage("⚠️ Please select the end month and year.", "warning");
-      return false;
-    }
-
-    if (!form.marks.trim()) {
-      showMessage("⚠️ Please enter the marks/score.", "warning");
-      return false;
-    }
-
-    const startDate = new Date(form.startYear, months.indexOf(form.startMonth));
-    const endDate = form.isCurrent ? new Date() : new Date(form.endYear, months.indexOf(form.endMonth));
-    
-    if (!form.isCurrent && startDate > endDate) {
-      showMessage("⚠️ Start date cannot be after end date.", "warning");
-      return false;
-    }
-
-    const yearDisplay = formatYearDisplay(
-      form.startMonth, form.startYear,
-      form.endMonth, form.endYear,
-      form.isCurrent
-    );
-
-    setSaving(true);
-    setMessage("");
-
-    try {
-      const response = await API.put(`/admin/education/${editingId}`, {
-        degree: form.degree,
-        college: form.college,
-        year: yearDisplay,
-        marks: form.marks,
-        startMonth: form.startMonth,
-        startYear: form.startYear,
-        endMonth: form.endMonth,
-        endYear: form.endYear,
-        isCurrent: form.isCurrent,
-      });
-      
-      if (response.data.success) {
-        showMessage("✅ Education updated successfully!", "success");
-        setForm(emptyEducation);
-        setEditingId(null);
-        await loadEducation();
-        return true;
-      }
-      return false;
-    } catch (error) {
-      console.error("Update error:", error);
-      const errorMsg = error.response?.data?.message || "❌ Failed to update education.";
-      showMessage(errorMsg, "error");
-      return false;
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  // DELETE - Remove education
-  const handleDelete = async (id) => {
-    if (!id) return false;
-    
-    const confirmed = window.confirm(
-      "Are you sure you want to delete this education entry?\nThis action cannot be undone."
-    );
-    if (!confirmed) return false;
-
-    setDeletingId(id);
-    setMessage("");
-
-    try {
-      const response = await API.delete(`/admin/education/${id}`);
-      
-      if (response.data.success) {
-        showMessage("✅ Education deleted successfully.", "success");
-        await loadEducation();
-        return true;
-      }
-      return false;
-    } catch (error) {
-      console.error("Delete error:", error);
-      showMessage(
-        error.response?.data?.message || "❌ Failed to delete education.",
-        "error"
-      );
-      return false;
+      showToast(error.response?.data?.message || "Failed to delete record.", "error");
     } finally {
       setDeletingId(null);
     }
   };
 
-  // BULK DELETE
-  const handleBulkDelete = async () => {
-    if (selectedIds.length === 0) {
-      showMessage("⚠️ Please select education entries to delete.", "warning");
-      return;
-    }
-
-    const confirmed = window.confirm(
-      `Are you sure you want to delete ${selectedIds.length} education entr${selectedIds.length !== 1 ? 'ies' : 'y'}?\nThis action cannot be undone.`
-    );
-    if (!confirmed) return;
-
-    setLoading(true);
-    try {
-      for (const id of selectedIds) {
-        await API.delete(`/admin/education/${id}`);
-      }
-      showMessage(`✅ ${selectedIds.length} education entr${selectedIds.length !== 1 ? 'ies' : 'y'} deleted successfully.`, "success");
-      await loadEducation();
-      setSelectedIds([]);
-    } catch (error) {
-      console.error("Bulk delete error:", error);
-      showMessage("❌ Failed to delete some education entries.", "error");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // DUPLICATE
-  const handleDuplicate = async (item) => {
-    if (!item) return;
-
-    try {
-      const duplicateData = {
-        degree: `${item.degree} (Copy)`,
-        college: item.college || "Unknown",
-        year: item.year || "",
-        marks: item.marks || "",
-        startMonth: item.startMonth || "",
-        startYear: item.startYear || "",
-        endMonth: item.endMonth || "",
-        endYear: item.endYear || "",
-        isCurrent: item.isCurrent || false,
-      };
-
-      const response = await API.post("/admin/education", duplicateData);
-      
-      if (response.data.success) {
-        showMessage("✅ Education duplicated successfully!", "success");
-        await loadEducation();
-      }
-    } catch (error) {
-      console.error("Duplicate error:", error);
-      showMessage("❌ Failed to duplicate education.", "error");
-    }
-  };
-
-  // FORM SUBMIT
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    
-    let success;
-    if (editingId) {
-      success = await handleUpdate();
-    } else {
-      success = await handleCreate();
-    }
-
-    if (success) {
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    }
-  };
-
-  // EDIT
-  const editEducation = (item) => {
-    if (!item) return;
-    
-    // Try to parse year string into month/year components
-    let startMonth = item.startMonth || "";
-    let startYear = item.startYear || "";
-    let endMonth = item.endMonth || "";
-    let endYear = item.endYear || "";
-    let isCurrent = item.isCurrent || false;
-
-    // If no parsed data, try to extract from year string
-    if (!startMonth && !startYear && item.year) {
-      const parts = item.year.split(" - ");
-      if (parts.length === 2) {
-        // Try to parse "Month Year - Month Year" format
-        const startParts = parts[0].trim().split(" ");
-        const endParts = parts[1].trim().split(" ");
-        
-        if (startParts.length >= 2) {
-          startMonth = startParts.slice(0, -1).join(" ");
-          startYear = startParts[startParts.length - 1];
-        }
-        
-        if (endParts.length >= 2 && endParts[0] !== "Present") {
-          endMonth = endParts.slice(0, -1).join(" ");
-          endYear = endParts[endParts.length - 1];
-        } else if (endParts[0] === "Present") {
-          isCurrent = true;
-        }
-      }
-    }
-
-    setEditingId(item.id);
-    setForm({
-      degree: item.degree || "",
-      college: item.college || item.institution || "",
-      startMonth: startMonth,
-      startYear: startYear,
-      endMonth: endMonth,
-      endYear: endYear,
-      isCurrent: isCurrent,
-      marks: item.marks || item.score || "",
-    });
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  };
-
-  // CANCEL EDIT
-  const cancelEdit = () => {
+  const handleCancel = () => {
     setEditingId(null);
     setForm(emptyEducation);
   };
 
-  // SEARCH, SORT, PAGINATION
-  const getFilteredEducation = () => {
-    let filtered = [...education];
-
-    if (searchTerm) {
-      const term = searchTerm.toLowerCase();
-      filtered = filtered.filter(item => 
-        item.degree?.toLowerCase().includes(term) ||
-        item.college?.toLowerCase().includes(term) ||
-        item.year?.toLowerCase().includes(term) ||
-        item.marks?.toLowerCase().includes(term)
-      );
-    }
-
-    // Sort
-    filtered.sort((a, b) => {
-      let aVal = (a[sortBy] || "").toString().toLowerCase();
-      let bVal = (b[sortBy] || "").toString().toLowerCase();
-      
-      if (sortBy === "year") {
-        const getStartYear = (yearStr) => {
-          const match = yearStr?.match(/\d{4}/);
-          return match ? parseInt(match[0]) : 0;
-        };
-        aVal = getStartYear(a.year);
-        bVal = getStartYear(b.year);
-        return sortOrder === "asc" ? aVal - bVal : bVal - aVal;
-      }
-      
-      if (sortOrder === "asc") {
-        return aVal.localeCompare(bVal);
-      } else {
-        return bVal.localeCompare(aVal);
-      }
-    });
-
-    return filtered;
-  };
-
-  const filteredEdu = getFilteredEducation();
-  const totalPages = Math.ceil(filteredEdu.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const currentEdu = filteredEdu.slice(startIndex, startIndex + itemsPerPage);
-
-  // SELECT ALL
-  const handleSelectAll = (e) => {
-    if (e.target.checked) {
-      setSelectedIds(currentEdu.map(item => item.id));
-    } else {
-      setSelectedIds([]);
-    }
-  };
-
-  const handleSelect = (id) => {
-    if (selectedIds.includes(id)) {
-      setSelectedIds(selectedIds.filter(sid => sid !== id));
-    } else {
-      setSelectedIds([...selectedIds, id]);
-    }
-  };
-
-  // EXPORT
-  const exportData = () => {
-    try {
-      const dataStr = JSON.stringify(education, null, 2);
-      const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
-      const exportFileDefaultName = `education_${new Date().toISOString().slice(0,10)}.json`;
-      const linkElement = document.createElement('a');
-      linkElement.setAttribute('href', dataUri);
-      linkElement.setAttribute('download', exportFileDefaultName);
-      linkElement.click();
-      showMessage("✅ Data exported successfully!", "success");
-    } catch (error) {
-      console.error("Export error:", error);
-      showMessage("❌ Failed to export data.", "error");
-    }
-  };
-
-  // IMPORT
-  const importData = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    try {
-      const reader = new FileReader();
-      reader.onload = async (event) => {
-        try {
-          const importedData = JSON.parse(event.target.result);
-          if (!Array.isArray(importedData)) {
-            showMessage("⚠️ Invalid data format. Expected array.", "warning");
-            return;
-          }
-
-          const confirmed = window.confirm(
-            `This will add ${importedData.length} education entr${importedData.length !== 1 ? 'ies' : 'y'}. Continue?`
-          );
-          if (!confirmed) return;
-
-          setLoading(true);
-          for (const edu of importedData) {
-            await API.post("/admin/education", {
-              degree: edu.degree || "Untitled Degree",
-              college: edu.college || edu.institution || "Unknown Institution",
-              year: edu.year || "",
-              marks: edu.marks || edu.score || "",
-              startMonth: edu.startMonth || "",
-              startYear: edu.startYear || "",
-              endMonth: edu.endMonth || "",
-              endYear: edu.endYear || "",
-              isCurrent: edu.isCurrent || false,
-            });
-          }
-          showMessage(`✅ ${importedData.length} education entr${importedData.length !== 1 ? 'ies' : 'y'} imported successfully!`, "success");
-          await loadEducation();
-        } catch (parseError) {
-          console.error("Parse error:", parseError);
-          showMessage("❌ Failed to parse imported file.", "error");
-        } finally {
-          setLoading(false);
-        }
-      };
-      reader.readAsText(file);
-    } catch (error) {
-      console.error("Import error:", error);
-      showMessage("❌ Failed to import data.", "error");
-    } finally {
-      e.target.value = '';
-    }
-  };
-
-  // Get message styles
-  const getMessageStyles = () => {
-    switch (messageType) {
-      case "success":
-        return "border-green-400/20 bg-green-400/10 text-green-300";
-      case "warning":
-        return "border-yellow-400/20 bg-yellow-400/10 text-yellow-300";
-      case "error":
-        return "border-red-400/20 bg-red-400/10 text-red-300";
-      default:
-        return "border-cyan-400/20 bg-cyan-400/10 text-cyan-300";
-    }
-  };
-
-  const hasEducation = Array.isArray(education) && education.length > 0;
+  const filteredEducation = educationList.filter((item) => {
+    if (!searchTerm.trim()) return true;
+    const term = searchTerm.toLowerCase();
+    return (
+      (item.degree || "").toLowerCase().includes(term) ||
+      (item.college || item.institution || "").toLowerCase().includes(term) ||
+      (item.year || "").toLowerCase().includes(term)
+    );
+  });
 
   return (
-    <div 
-      className="min-h-screen"
-      style={{
-        backgroundColor: themeColors?.background || '#0f172a',
-        color: themeColors?.text || '#ffffff',
-      }}
-    >
+    <div className="min-h-screen bg-[#070b14] text-white selection:bg-purple-500 selection:text-white">
       <AdminSidebar />
 
       <main className="ml-64 min-h-screen p-8">
-        {/* Header Section */}
-        <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
+        {/* Header */}
+        <div className="mb-8 flex flex-col justify-between gap-4 md:flex-row md:items-center">
           <div>
-            <p 
-              className="text-sm font-medium"
-              style={{ color: getThemeColor() }}
-            >
-              ADMIN / EDUCATION
-            </p>
-            <h1 className="mt-2 text-3xl font-bold">Manage Education</h1>
-            <p 
-              className="mt-1 text-sm"
-              style={{ color: themeColors?.textSecondary || '#94a3b8' }}
-            >
-              {hasEducation ? `${education.length} education entr${education.length !== 1 ? 'ies' : 'y'} in your portfolio` : 'No education in your portfolio'}
+            <div className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-purple-400">
+              <Sparkles className="h-3.5 w-3.5" />
+              <span>Academic Background</span>
+            </div>
+            <h1 className="mt-1 text-3xl font-extrabold text-white">
+              Education Manager
+            </h1>
+            <p className="mt-1 text-sm text-slate-400">
+              Manage degrees, colleges, scores, and completion timelines featured on your portfolio.
             </p>
           </div>
-          <div className="flex flex-wrap gap-3">
-            {hasEducation && (
-              <button
-                onClick={exportData}
-                className="rounded-xl border px-4 py-2 text-sm transition hover:bg-white/10"
-                style={{
-                  borderColor: themeColors?.border || 'rgba(255,255,255,0.1)',
-                  color: themeColors?.textSecondary || 'rgba(255,255,255,0.7)',
-                }}
-              >
-                📤 Export
-              </button>
-            )}
-            <label
-              className="rounded-xl border px-4 py-2 text-sm transition hover:bg-white/10 cursor-pointer"
-              style={{
-                borderColor: themeColors?.border || 'rgba(255,255,255,0.1)',
-                color: themeColors?.textSecondary || 'rgba(255,255,255,0.7)',
-              }}
-            >
-              📥 Import
-              <input
-                type="file"
-                accept=".json"
-                onChange={importData}
-                className="hidden"
-              />
-            </label>
+
+          <div className="flex items-center gap-3">
             <button
-              onClick={() => navigate("/admin/dashboard")}
-              className="rounded-xl border px-4 py-2 text-sm transition hover:bg-white/10"
-              style={{
-                borderColor: themeColors?.border || 'rgba(255,255,255,0.1)',
-                color: themeColors?.textSecondary || 'rgba(255,255,255,0.7)',
-              }}
+              onClick={loadEducation}
+              className="flex items-center gap-1.5 rounded-xl border border-slate-700 bg-slate-800/80 px-3.5 py-2 text-xs font-semibold text-slate-300 transition hover:bg-slate-800 hover:text-white"
             >
-              ← Dashboard
+              <RefreshCw className={"h-3.5 w-3.5 " + (loading ? "animate-spin" : "")} />
+              <span>Refresh</span>
             </button>
+
+            <a
+              href="/#education"
+              target="_blank"
+              rel="noreferrer"
+              className="flex items-center gap-1.5 rounded-xl border border-purple-500/30 bg-purple-950/40 px-3.5 py-2 text-xs font-semibold text-purple-300 transition hover:bg-purple-900/50"
+            >
+              <span>View On Site</span>
+              <ExternalLink className="h-3.5 w-3.5" />
+            </a>
           </div>
         </div>
 
-        {/* Message Display */}
+        {/* Status Notification Toast */}
         {message && (
-          <div 
-            className={`mb-6 rounded-xl border px-4 py-3 text-sm ${getMessageStyles()}`}
+          <div
+            className={"mb-6 flex items-center gap-3 rounded-2xl p-4 text-sm font-medium shadow-lg transition-all " + (
+              messageType === "success"
+                ? "border border-emerald-500/30 bg-emerald-950/50 text-emerald-300 shadow-emerald-900/20"
+                : "border border-rose-500/30 bg-rose-950/50 text-rose-300 shadow-rose-900/20"
+            )}
           >
-            {message}
+            {messageType === "success" ? (
+              <CheckCircle2 className="h-5 w-5 shrink-0" />
+            ) : (
+              <AlertCircle className="h-5 w-5 shrink-0" />
+            )}
+            <span>{message}</span>
           </div>
         )}
 
-        {/* Create/Edit Form */}
-        <div 
-          className="mb-10 rounded-2xl border p-6"
-          style={{
-            borderColor: themeColors?.border || 'rgba(255,255,255,0.1)',
-            backgroundColor: themeColors?.cardBg || 'rgba(255,255,255,0.05)',
-          }}
-        >
-          <h2 className="mb-6 text-xl font-semibold">
-            {editingId ? "✏️ Edit Education" : "➕ Add New Education"}
-          </h2>
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+          {/* LEFT: Education Form (5 cols) */}
+          <div className="lg:col-span-5">
+            <form
+              onSubmit={handleSubmit}
+              className="rounded-3xl border border-slate-800 bg-slate-900/90 p-7 shadow-xl space-y-5 sticky top-8"
+            >
+              <div className="border-b border-slate-800 pb-4 flex items-center justify-between">
+                <div>
+                  <h3 className="text-base font-bold text-white flex items-center gap-2">
+                    {editingId ? <Pencil className="h-4 w-4 text-purple-400" /> : <Plus className="h-4 w-4 text-purple-400" />}
+                    <span>{editingId ? "Edit Academic Record" : "Add Education Record"}</span>
+                  </h3>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    {editingId ? "Update details and save" : "Enter degree & institution details"}
+                  </p>
+                </div>
 
-          <form onSubmit={handleSubmit} className="grid gap-5 md:grid-cols-2">
-            {/* Degree */}
-            <div>
-              <label className="mb-2 block text-sm" style={{ color: themeColors?.textSecondary || 'rgba(255,255,255,0.7)' }}>
-                Degree <span className="text-red-400 ml-1">*</span>
-              </label>
-              <input
-                type="text"
-                name="degree"
-                value={form.degree}
-                onChange={handleChange}
-                placeholder="Enter degree name"
-                required
-                className="w-full rounded-xl border px-4 py-3 outline-none transition placeholder:text-gray-400 focus:ring-2"
-                style={{
-                  borderColor: '#d1d5db',
-                  backgroundColor: '#ffffff',
-                  color: '#1f2937',
-                }}
-                onFocus={(e) => {
-                  e.currentTarget.style.borderColor = getThemeColor();
-                  e.currentTarget.style.boxShadow = `0 0 0 3px ${getThemeColor()}30`;
-                }}
-                onBlur={(e) => {
-                  e.currentTarget.style.borderColor = '#d1d5db';
-                  e.currentTarget.style.boxShadow = 'none';
-                }}
-              />
-            </div>
-
-            {/* College/Institution */}
-            <div>
-              <label className="mb-2 block text-sm" style={{ color: themeColors?.textSecondary || 'rgba(255,255,255,0.7)' }}>
-                College/Institution <span className="text-red-400 ml-1">*</span>
-              </label>
-              <input
-                type="text"
-                name="college"
-                value={form.college}
-                onChange={handleChange}
-                placeholder="Enter college or institution name or school name"
-                required
-                className="w-full rounded-xl border px-4 py-3 outline-none transition placeholder:text-gray-400 focus:ring-2"
-                style={{
-                  borderColor: '#d1d5db',
-                  backgroundColor: '#ffffff',
-                  color: '#1f2937',
-                }}
-                onFocus={(e) => {
-                  e.currentTarget.style.borderColor = getThemeColor();
-                  e.currentTarget.style.boxShadow = `0 0 0 3px ${getThemeColor()}30`;
-                }}
-                onBlur={(e) => {
-                  e.currentTarget.style.borderColor = '#d1d5db';
-                  e.currentTarget.style.boxShadow = 'none';
-                }}
-              />
-            </div>
-
-            {/* Start Month & Year */}
-            <div>
-              <label className="mb-2 block text-sm" style={{ color: themeColors?.textSecondary || 'rgba(255,255,255,0.7)' }}>
-                Start Date <span className="text-red-400 ml-1">*</span>
-              </label>
-              <div className="flex gap-2">
-                <select
-                  name="startMonth"
-                  value={form.startMonth}
-                  onChange={handleChange}
-                  className="flex-1 rounded-xl border px-3 py-3 outline-none transition focus:ring-2"
-                  style={{
-                    borderColor: '#d1d5db',
-                    backgroundColor: '#ffffff',
-                    color: '#1f2937',
-                  }}
-                  onFocus={(e) => {
-                    e.currentTarget.style.borderColor = getThemeColor();
-                    e.currentTarget.style.boxShadow = `0 0 0 3px ${getThemeColor()}30`;
-                  }}
-                  onBlur={(e) => {
-                    e.currentTarget.style.borderColor = '#d1d5db';
-                    e.currentTarget.style.boxShadow = 'none';
-                  }}
-                >
-                  <option value="">Month</option>
-                  {months.map(month => (
-                    <option key={month} value={month}>{month}</option>
-                  ))}
-                </select>
-                <select
-                  name="startYear"
-                  value={form.startYear}
-                  onChange={handleChange}
-                  className="flex-1 rounded-xl border px-3 py-3 outline-none transition focus:ring-2"
-                  style={{
-                    borderColor: '#d1d5db',
-                    backgroundColor: '#ffffff',
-                    color: '#1f2937',
-                  }}
-                  onFocus={(e) => {
-                    e.currentTarget.style.borderColor = getThemeColor();
-                    e.currentTarget.style.boxShadow = `0 0 0 3px ${getThemeColor()}30`;
-                  }}
-                  onBlur={(e) => {
-                    e.currentTarget.style.borderColor = '#d1d5db';
-                    e.currentTarget.style.boxShadow = 'none';
-                  }}
-                >
-                  <option value="">Year</option>
-                  {years.map(year => (
-                    <option key={year} value={year}>{year}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            {/* End Month & Year */}
-            <div>
-              <label className="mb-2 block text-sm" style={{ color: themeColors?.textSecondary || 'rgba(255,255,255,0.7)' }}>
-                End Date <span className="text-red-400 ml-1">*</span>
-              </label>
-              <div className="flex gap-2">
-                <select
-                  name="endMonth"
-                  value={form.endMonth}
-                  onChange={handleChange}
-                  disabled={form.isCurrent}
-                  className="flex-1 rounded-xl border px-3 py-3 outline-none transition focus:ring-2 disabled:opacity-50"
-                  style={{
-                    borderColor: '#d1d5db',
-                    backgroundColor: '#ffffff',
-                    color: '#1f2937',
-                  }}
-                  onFocus={(e) => {
-                    e.currentTarget.style.borderColor = getThemeColor();
-                    e.currentTarget.style.boxShadow = `0 0 0 3px ${getThemeColor()}30`;
-                  }}
-                  onBlur={(e) => {
-                    e.currentTarget.style.borderColor = '#d1d5db';
-                    e.currentTarget.style.boxShadow = 'none';
-                  }}
-                >
-                  <option value="">Month</option>
-                  {months.map(month => (
-                    <option key={month} value={month}>{month}</option>
-                  ))}
-                </select>
-                <select
-                  name="endYear"
-                  value={form.endYear}
-                  onChange={handleChange}
-                  disabled={form.isCurrent}
-                  className="flex-1 rounded-xl border px-3 py-3 outline-none transition focus:ring-2 disabled:opacity-50"
-                  style={{
-                    borderColor: '#d1d5db',
-                    backgroundColor: '#ffffff',
-                    color: '#1f2937',
-                  }}
-                  onFocus={(e) => {
-                    e.currentTarget.style.borderColor = getThemeColor();
-                    e.currentTarget.style.boxShadow = `0 0 0 3px ${getThemeColor()}30`;
-                  }}
-                  onBlur={(e) => {
-                    e.currentTarget.style.borderColor = '#d1d5db';
-                    e.currentTarget.style.boxShadow = 'none';
-                  }}
-                >
-                  <option value="">Year</option>
-                  {years.map(year => (
-                    <option key={year} value={year}>{year}</option>
-                  ))}
-                </select>
-              </div>
-              <label className="mt-2 flex items-center gap-2 text-sm" style={{ color: themeColors?.textSecondary || 'rgba(255,255,255,0.7)' }}>
-                <input
-                  type="checkbox"
-                  name="isCurrent"
-                  checked={form.isCurrent}
-                  onChange={handleChange}
-                  className="rounded border-gray-300 text-cyan-600 focus:ring-cyan-500"
-                />
-                Currently studying here (Present)
-              </label>
-            </div>
-
-            {/* Marks/Score */}
-            <div>
-              <label className="mb-2 block text-sm" style={{ color: themeColors?.textSecondary || 'rgba(255,255,255,0.7)' }}>
-                Marks/Score <span className="text-red-400 ml-1">*</span>
-              </label>
-              <input
-                type="text"
-                name="marks"
-                value={form.marks}
-                onChange={handleChange}
-                placeholder="Enter Your CGPA or Percentage or Score"
-                required
-                className="w-full rounded-xl border px-4 py-3 outline-none transition placeholder:text-gray-400 focus:ring-2"
-                style={{
-                  borderColor: '#d1d5db',
-                  backgroundColor: '#ffffff',
-                  color: '#1f2937',
-                }}
-                onFocus={(e) => {
-                  e.currentTarget.style.borderColor = getThemeColor();
-                  e.currentTarget.style.boxShadow = `0 0 0 3px ${getThemeColor()}30`;
-                }}
-                onBlur={(e) => {
-                  e.currentTarget.style.borderColor = '#d1d5db';
-                  e.currentTarget.style.boxShadow = 'none';
-                }}
-              />
-            </div>
-
-            {/* Buttons */}
-            <div className="flex gap-3 md:col-span-2">
-              <button
-                type="submit"
-                disabled={saving}
-                className="rounded-xl px-6 py-3 font-semibold text-white transition disabled:opacity-50 disabled:cursor-not-allowed"
-                style={{
-                  backgroundColor: getThemeColor(),
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.opacity = '0.85';
-                  e.currentTarget.style.transform = 'translateY(-1px)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.opacity = '1';
-                  e.currentTarget.style.transform = 'translateY(0)';
-                }}
-              >
-                {saving ? (
-                  <>
-                    <span className="inline-block h-4 w-4 mr-2 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                    {editingId ? "Updating..." : "Adding..."}
-                  </>
-                ) : (
-                  editingId ? "Update Education" : "Add Education"
+                {editingId && (
+                  <button
+                    type="button"
+                    onClick={handleCancel}
+                    className="text-xs font-semibold text-rose-400 hover:underline"
+                  >
+                    Cancel
+                  </button>
                 )}
-              </button>
+              </div>
 
-              {editingId && (
-                <button
-                  type="button"
-                  onClick={cancelEdit}
-                  className="rounded-xl border px-6 py-3 transition hover:bg-gray-100"
-                  style={{
-                    borderColor: '#d1d5db',
-                    color: '#6b7280',
-                    backgroundColor: '#ffffff',
-                  }}
-                >
-                  Cancel
-                </button>
-              )}
-            </div>
-          </form>
-
-          <div className="mt-4 border-t pt-4" style={{ borderColor: themeColors?.border || 'rgba(255,255,255,0.05)' }}>
-            <p className="text-xs" style={{ color: themeColors?.textSecondary || 'rgba(255,255,255,0.2)' }}>
-              Education entries are displayed on the portfolio's Education section in chronological order.
-            </p>
-          </div>
-        </div>
-
-        {/* LIST SECTION - Same as before */}
-        <div 
-          className="rounded-2xl border p-6"
-          style={{
-            borderColor: themeColors?.border || 'rgba(255,255,255,0.1)',
-            backgroundColor: themeColors?.cardBg || 'rgba(255,255,255,0.05)',
-          }}
-        >
-          {/* Toolbar */}
-          <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-            <div className="flex flex-wrap items-center gap-3">
-              <h2 className="text-xl font-semibold">Your Education</h2>
-              {hasEducation && (
-                <label className="flex items-center gap-2 text-sm text-gray-500">
-                  <input
-                    type="checkbox"
-                    checked={currentEdu.length > 0 && currentEdu.every(item => selectedIds.includes(item.id))}
-                    onChange={handleSelectAll}
-                    className="h-4 w-4 rounded border-gray-300 text-cyan-600 focus:ring-cyan-500"
-                    aria-label="Select all education entries on this page"
-                  />
-                  Select all
+              {/* Degree */}
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">
+                  Degree / Program *
                 </label>
-              )}
-              {!loading && hasEducation && (
-                <span 
-                  className="rounded-full px-3 py-1 text-xs"
-                  style={{
-                    backgroundColor: `${getThemeColor()}20`,
-                    color: getThemeColor(),
-                  }}
-                >
-                  {filteredEdu.length} total
-                </span>
-              )}
-            </div>
-
-            <div className="flex flex-wrap items-center gap-3">
-              <div className="relative">
                 <input
                   type="text"
-                  placeholder="Search education..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="rounded-xl border px-4 py-2 pl-9 text-sm outline-none transition focus:ring-2"
-                  style={{
-                    borderColor: '#d1d5db',
-                    backgroundColor: '#ffffff',
-                    color: '#1f2937',
-                    minWidth: '200px',
-                  }}
+                  name="degree"
+                  required
+                  placeholder="e.g. B.Tech in Computer Science"
+                  value={form.degree}
+                  onChange={handleChange}
+                  className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3.5 py-2.5 text-sm text-white placeholder-slate-500 focus:border-purple-500 focus:outline-none transition"
                 />
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">🔍</span>
               </div>
 
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value)}
-                className="rounded-xl border px-4 py-2 text-sm outline-none transition focus:ring-2"
-                style={{
-                  borderColor: '#d1d5db',
-                  backgroundColor: '#ffffff',
-                  color: '#1f2937',
-                }}
-              >
-                <option value="degree">Sort by Degree</option>
-                <option value="college">Sort by College</option>
-                <option value="year">Sort by Year</option>
-                <option value="marks">Sort by Marks</option>
-              </select>
+              {/* College / Institution */}
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">
+                  College / University / School *
+                </label>
+                <input
+                  type="text"
+                  name="college"
+                  required
+                  placeholder="e.g. IES College of Technology"
+                  value={form.college}
+                  onChange={handleChange}
+                  className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3.5 py-2.5 text-sm text-white placeholder-slate-500 focus:border-purple-500 focus:outline-none transition"
+                />
+              </div>
 
-              <button
-                onClick={() => setSortOrder(sortOrder === "asc" ? "desc" : "asc")}
-                className="rounded-xl border px-4 py-2 text-sm transition hover:bg-white/10"
-                style={{
-                  borderColor: themeColors?.border || 'rgba(255,255,255,0.1)',
-                  color: themeColors?.textSecondary || 'rgba(255,255,255,0.7)',
-                }}
-              >
-                {sortOrder === "asc" ? "↑ A-Z" : "↓ Z-A"}
-              </button>
+              {/* Marks / CGPA & Year */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">
+                    Score / CGPA / %
+                  </label>
+                  <input
+                    type="text"
+                    name="marks"
+                    placeholder="e.g. 8.36 CGPA or 71.2%"
+                    value={form.marks}
+                    onChange={handleChange}
+                    className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3.5 py-2.5 text-sm text-white placeholder-slate-500 focus:border-purple-500 focus:outline-none transition"
+                  />
+                </div>
 
-              {selectedIds.length > 0 && (
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">
+                    Year / Timeline
+                  </label>
+                  <input
+                    type="text"
+                    name="year"
+                    placeholder="e.g. 2022 - 2026"
+                    value={form.year}
+                    onChange={handleChange}
+                    className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3.5 py-2.5 text-sm text-white placeholder-slate-500 focus:border-purple-500 focus:outline-none transition"
+                  />
+                </div>
+              </div>
+
+              {/* Submit Button */}
+              <div className="pt-3 border-t border-slate-800 flex items-center justify-between">
+                {editingId && (
+                  <button
+                    type="button"
+                    onClick={handleCancel}
+                    className="rounded-xl border border-slate-700 bg-slate-800 px-4 py-2 text-xs font-semibold text-slate-300 hover:text-white transition"
+                  >
+                    Cancel
+                  </button>
+                )}
+
                 <button
-                  onClick={handleBulkDelete}
-                  className="rounded-xl px-4 py-2 text-sm font-medium text-red-600 transition hover:bg-red-50"
-                  style={{
-                    backgroundColor: '#fee2e2',
-                  }}
+                  type="submit"
+                  disabled={saving}
+                  className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 py-2.5 text-xs font-bold text-white shadow-lg shadow-purple-600/30 transition hover:-translate-y-0.5"
                 >
-                  🗑 Delete Selected ({selectedIds.length})
+                  {saving ? (
+                    <>
+                      <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                      <span>Saving Record...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Plus className="h-4 w-4" />
+                      <span>{editingId ? "Update Education" : "Add Education Record"}</span>
+                    </>
+                  )}
                 </button>
-              )}
-            </div>
+              </div>
+            </form>
           </div>
 
-          {/* Loading State */}
-          {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <div className="text-center">
-                <div 
-                  className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-4 border-t-transparent"
-                  style={{
-                    borderColor: `${getThemeColor()}40`,
-                    borderTopColor: getThemeColor(),
-                  }}
+          {/* RIGHT: Education Timeline Cards (7 cols) */}
+          <div className="lg:col-span-7 space-y-4">
+            {/* Search & Counter toolbar */}
+            <div className="rounded-2xl border border-slate-800 bg-slate-900/90 p-4 shadow-xl flex items-center justify-between gap-4">
+              <div className="relative flex-1">
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
+                <input
+                  type="text"
+                  placeholder="Search education by degree, college, or year..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full rounded-xl border border-slate-700 bg-slate-950 pl-10 pr-4 py-2 text-xs text-white placeholder-slate-500 focus:border-purple-500 focus:outline-none transition"
                 />
-                <p className="text-white/50">Loading education...</p>
               </div>
+
+              <span className="shrink-0 text-xs font-bold text-purple-300 px-3 py-1.5 rounded-xl bg-purple-500/20 border border-purple-500/30">
+                {filteredEducation.length} Records
+              </span>
             </div>
-          ) : !hasEducation ? (
-            <div 
-              className="rounded-xl border p-12 text-center"
-              style={{
-                borderColor: '#d1d5db',
-                backgroundColor: '#ffffff',
-              }}
-            >
-              <div className="text-6xl mb-4">🎓</div>
-              <p className="text-gray-500">No education entries found. Add your first education above!</p>
-            </div>
-          ) : filteredEdu.length === 0 ? (
-            <div 
-              className="rounded-xl border p-12 text-center"
-              style={{
-                borderColor: '#d1d5db',
-                backgroundColor: '#ffffff',
-              }}
-            >
-              <div className="text-6xl mb-4">🔍</div>
-              <p className="text-gray-500">No education entries match your search.</p>
-              <button
-                onClick={() => setSearchTerm("")}
-                className="mt-2 text-sm text-cyan-600 hover:underline"
-              >
-                Clear search
-              </button>
-            </div>
-          ) : (
-            <>
-              <div className="space-y-4">
-                {currentEdu.map((item) => {
-                  if (!item) return null;
-                  
-                  const isSelected = selectedIds.includes(item.id);
-                  
-                  return (
-                    <div
-                      key={item.id || item.degree + item.year}
-                      className={`flex flex-col gap-4 rounded-xl border p-5 transition shadow-sm hover:shadow-md md:flex-row md:items-center md:justify-between ${
-                        isSelected ? 'ring-2 ring-cyan-400' : ''
-                      }`}
-                      style={{
-                        backgroundColor: '#ffffff',
-                        borderColor: isSelected ? '#08bde0' : '#e5e7eb',
-                      }}
-                    >
+
+            {/* Records List */}
+            {filteredEducation.length === 0 ? (
+              <div className="rounded-3xl border border-slate-800 bg-slate-900/60 p-12 text-center">
+                <GraduationCap className="mx-auto h-12 w-12 text-slate-600" />
+                <h3 className="mt-3 text-sm font-bold text-white">No education records found</h3>
+                <p className="mt-1 text-xs text-slate-400">Add an academic milestone using the form on the left.</p>
+              </div>
+            ) : (
+              filteredEducation.map((item, idx) => {
+                const isEditing = editingId === item.id;
+                const isDeleting = deletingId === item.id;
+
+                return (
+                  <div
+                    key={item.id || idx}
+                    className={"group relative rounded-3xl border p-6 transition-all duration-200 bg-slate-900/90 shadow-xl " + (
+                      isEditing ? "border-purple-500 ring-2 ring-purple-500/20" : "border-slate-800 hover:border-slate-700"
+                    )}
+                  >
+                    <div className="flex items-start justify-between gap-4">
                       <div className="flex items-start gap-4">
-                        <input
-                          type="checkbox"
-                          checked={isSelected}
-                          onChange={() => handleSelect(item.id)}
-                          className="mt-1 h-4 w-4 rounded border-gray-300 text-cyan-600 focus:ring-cyan-500"
-                        />
-                        
-                        <div className="flex-1">
-                          <div className="flex items-center gap-3">
-                            <div 
-                              className="flex h-10 w-10 items-center justify-center rounded-xl text-lg"
-                              style={{
-                                backgroundColor: `${getThemeColor()}15`,
-                                color: getThemeColor(),
-                              }}
-                            >
-                              🎓
-                            </div>
-                            <div>
-                              <h3 className="text-lg font-semibold text-gray-900">
-                                {item.degree || "Untitled Degree"}
-                              </h3>
-                              <p className="mt-1 text-sm" style={{ color: getThemeColor() }}>
-                                {item.college || "Unknown Institution"}
-                              </p>
-                            </div>
-                          </div>
-                          <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-gray-500">
-                            <span>📅 {item.year || "Year not specified"}</span>
-                            {item.marks && (
-                              <>
-                                <span className="text-gray-300">|</span>
-                                <span>🎯 {item.marks}</span>
-                              </>
+                        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-purple-500/20 text-purple-400 shadow-md">
+                          <GraduationCap className="h-6 w-6" />
+                        </div>
+                        <div>
+                          <h4 className="text-base font-bold text-white flex items-center gap-2">
+                            <span>{item.degree}</span>
+                            {isEditing && (
+                              <span className="text-[10px] bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded-full font-bold border border-purple-500/30">
+                                Editing
+                              </span>
                             )}
-                            {item.isCurrent && (
-                              <>
-                                <span className="text-gray-300">|</span>
-                                <span className="text-green-600">● Current</span>
-                              </>
+                          </h4>
+                          <p className="mt-1 text-xs text-slate-300 font-medium flex items-center gap-1.5">
+                            <Building2 className="h-3.5 w-3.5 text-slate-400" />
+                            <span>{item.college || item.institution}</span>
+                          </p>
+
+                          <div className="mt-3 flex items-center gap-3 text-xs flex-wrap">
+                            {(item.marks || item.score) && (
+                              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/20 border border-emerald-500/40 px-2.5 py-0.5 text-[11px] font-bold text-emerald-300">
+                                <Award className="h-3 w-3" />
+                                <span>{item.marks || item.score}</span>
+                              </span>
+                            )}
+                            {item.year && (
+                              <span className="inline-flex items-center gap-1 rounded-full bg-slate-800 border border-slate-700 px-2.5 py-0.5 text-[11px] text-slate-300">
+                                <Calendar className="h-3 w-3 text-purple-400" />
+                                <span>{item.year}</span>
+                              </span>
                             )}
                           </div>
                         </div>
                       </div>
 
-                      <div className="flex flex-wrap gap-2">
+                      {/* Actions */}
+                      <div className="flex items-center gap-1.5 shrink-0">
                         <button
-                          onClick={() => handleDuplicate(item)}
-                          className="rounded-lg px-4 py-2 text-sm font-medium transition"
-                          style={{
-                            backgroundColor: '#fef3c7',
-                            color: '#d97706',
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.backgroundColor = '#fde68a';
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.backgroundColor = '#fef3c7';
-                          }}
+                          type="button"
+                          onClick={() => handleEdit(item)}
+                          className="rounded-xl border border-purple-500/30 bg-purple-950/30 p-2 text-purple-300 hover:bg-purple-900/50 transition"
+                          title="Edit Education"
                         >
-                          📋 Duplicate
+                          <Pencil className="h-3.5 w-3.5" />
                         </button>
                         <button
-                          onClick={() => editEducation(item)}
-                          className="rounded-lg px-4 py-2 text-sm font-medium transition"
-                          style={{
-                            backgroundColor: '#dbeafe',
-                            color: '#2563eb',
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.backgroundColor = '#bfdbfe';
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.backgroundColor = '#dbeafe';
-                          }}
+                          type="button"
+                          onClick={() => handleDelete(item.id, item.degree)}
+                          disabled={isDeleting}
+                          className="rounded-xl border border-rose-500/20 bg-rose-950/20 p-2 text-rose-400 hover:bg-rose-950/40 transition"
+                          title="Delete Education"
                         >
-                          ✏️ Edit
-                        </button>
-                        <button
-                          onClick={() => handleDelete(item.id)}
-                          disabled={deletingId === item.id}
-                          className="rounded-lg px-4 py-2 text-sm font-medium transition disabled:opacity-50"
-                          style={{
-                            backgroundColor: '#fee2e2',
-                            color: '#dc2626',
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.backgroundColor = '#fecaca';
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.backgroundColor = '#fee2e2';
-                          }}
-                        >
-                          {deletingId === item.id ? (
-                            <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-red-500 border-t-transparent" />
-                          ) : (
-                            "🗑 Delete"
-                          )}
+                          <Trash2 className="h-3.5 w-3.5" />
                         </button>
                       </div>
                     </div>
-                  );
-                })}
-              </div>
-
-              {/* Pagination */}
-              {totalPages > 1 && (
-                <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
-                  <button
-                    onClick={() => setCurrentPage(1)}
-                    disabled={currentPage === 1}
-                    className="rounded-lg px-3 py-2 text-sm transition disabled:opacity-50"
-                    style={{
-                      backgroundColor: themeColors?.cardBg || 'rgba(255,255,255,0.05)',
-                      border: `1px solid ${themeColors?.border || 'rgba(255,255,255,0.1)'}`,
-                      color: themeColors?.text || '#ffffff',
-                    }}
-                  >
-                    ⟪
-                  </button>
-                  <button
-                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                    disabled={currentPage === 1}
-                    className="rounded-lg px-4 py-2 text-sm transition disabled:opacity-50"
-                    style={{
-                      backgroundColor: themeColors?.cardBg || 'rgba(255,255,255,0.05)',
-                      border: `1px solid ${themeColors?.border || 'rgba(255,255,255,0.1)'}`,
-                      color: themeColors?.text || '#ffffff',
-                    }}
-                  >
-                    Previous
-                  </button>
-                  
-                  <span className="px-4 py-2 text-sm">
-                    Page {currentPage} of {totalPages}
-                  </span>
-                  
-                  <button
-                    onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                    disabled={currentPage === totalPages}
-                    className="rounded-lg px-4 py-2 text-sm transition disabled:opacity-50"
-                    style={{
-                      backgroundColor: themeColors?.cardBg || 'rgba(255,255,255,0.05)',
-                      border: `1px solid ${themeColors?.border || 'rgba(255,255,255,0.1)'}`,
-                      color: themeColors?.text || '#ffffff',
-                    }}
-                  >
-                    Next
-                  </button>
-                  <button
-                    onClick={() => setCurrentPage(totalPages)}
-                    disabled={currentPage === totalPages}
-                    className="rounded-lg px-3 py-2 text-sm transition disabled:opacity-50"
-                    style={{
-                      backgroundColor: themeColors?.cardBg || 'rgba(255,255,255,0.05)',
-                      border: `1px solid ${themeColors?.border || 'rgba(255,255,255,0.1)'}`,
-                      color: themeColors?.text || '#ffffff',
-                    }}
-                  >
-                    ⟫
-                  </button>
-                </div>
-              )}
-
-              <div className="mt-4 flex flex-wrap justify-between items-center gap-2 text-xs" style={{ color: themeColors?.textSecondary || '#94a3b8' }}>
-                <span>
-                  Showing {startIndex + 1} to {Math.min(startIndex + itemsPerPage, filteredEdu.length)} of {filteredEdu.length} education entries
-                </span>
-                {selectedIds.length > 0 && (
-                  <span>
-                    {selectedIds.length} selected
-                  </span>
-                )}
-              </div>
-            </>
-          )}
+                  </div>
+                );
+              })
+            )}
+          </div>
         </div>
+
       </main>
     </div>
   );

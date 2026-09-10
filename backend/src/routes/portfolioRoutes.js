@@ -430,6 +430,74 @@ router.get(
 );
 
 // =====================================================
+// SUBMIT CONTACT FORM MESSAGE
+// POST /api/portfolio/contact
+// =====================================================
+
+router.post("/contact", async (req, res, next) => {
+  try {
+    const { firstName, lastName, email, subject, message } = req.body;
+    if (!email || !message) {
+      return res.status(400).json({
+        success: false,
+        message: "Email and message are required.",
+      });
+    }
+
+    const fullName = `${firstName || ""} ${lastName || ""}`.trim() || "Visitor";
+    console.log("📬 New contact message from:", fullName, `(${email})`);
+    console.log("Subject:", subject);
+    console.log("Message:", message);
+
+    // If SMTP credentials exist, send via Nodemailer
+    if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
+      try {
+        const nodemailer = require("nodemailer");
+        const transporter = nodemailer.createTransport({
+          service: "gmail",
+          auth: {
+            user: process.env.EMAIL_USER,
+            pass: process.env.EMAIL_PASS,
+          },
+        });
+
+        await transporter.sendMail({
+          from: `"${fullName} (Portfolio)" <${process.env.EMAIL_USER}>`,
+          replyTo: email,
+          to: "kumarichandanipali@gmail.com",
+          subject: `[Portfolio Inquiry] ${subject || "Message from " + fullName}`,
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px;">
+              <h2 style="color: #7c3aed; margin-top: 0;">New Message from Portfolio Website</h2>
+              <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+                <tr><td style="padding: 8px 0; color: #64748b; font-weight: bold; width: 100px;">Name:</td><td style="color: #1e293b;">${fullName}</td></tr>
+                <tr><td style="padding: 8px 0; color: #64748b; font-weight: bold;">Email:</td><td style="color: #1e293b;"><a href="mailto:${email}">${email}</a></td></tr>
+                <tr><td style="padding: 8px 0; color: #64748b; font-weight: bold;">Subject:</td><td style="color: #1e293b;">${subject || "General Inquiry"}</td></tr>
+              </table>
+              <div style="background-color: #f8fafc; padding: 16px; border-radius: 8px; border-left: 4px solid #7c3aed;">
+                <p style="margin: 0; color: #334155; white-space: pre-line;">${message}</p>
+              </div>
+              <p style="margin-top: 20px; font-size: 12px; color: #94a3b8;">Sent via Chandani Kumari Portfolio Contact Form</p>
+            </div>
+          `,
+        });
+        console.log("✅ Email successfully sent via SMTP to kumarichandanipali@gmail.com");
+      } catch (mailErr) {
+        console.warn("⚠️ SMTP sending failed, relying on client/FormSubmit fallback:", mailErr.message);
+      }
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Thank you! Your message has been sent to Chandani's email.",
+    });
+  } catch (error) {
+    console.error("❌ Error processing contact message:", error);
+    next(error);
+  }
+});
+
+// =====================================================
 // EXPORT ROUTER
 // =====================================================
 

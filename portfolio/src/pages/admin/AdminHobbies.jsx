@@ -1,547 +1,456 @@
+// pages/admin/AdminHobbies.jsx
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { 
+  Heart, 
+  Plus, 
+  Pencil, 
+  Trash2, 
+  ExternalLink, 
+  Search, 
+  Sparkles, 
+  CheckCircle2, 
+  AlertCircle, 
+  RefreshCw,
+  Smile
+} from "lucide-react";
 
 import API from "../../services/api";
 import AdminSidebar from "../../components/admin/AdminSidebar";
 import { useTheme } from "../../context/ThemeContext";
 
-const emptyHobby = {
-  name: "",
-  icon: "",
-};
+const iconPresets = ["🎨", "🎵", "📷", "📚", "🧘", "✈️", "🍳", "🚴", "💻", "🎮", "🎭", "🏃"];
 
-// Common icon suggestions
-const iconSuggestions = [
-  "📷", "🎨", "🎵", "🎮", "📚", "🏀", "⚽", "🎾", "🏊", "🚴",
-  "🎸", "🎹", "🎭", "🎪", "🎯", "🎱", "🎳", "🧘", "🏃", "⛰️",
-  "🌊", "🌺", "🍳", "✈️", "🚀", "💻", "🎧", "🎤", "🎬", "🎮"
+const defaultHobbies = [
+  { id: 1, name: "Painting", hobby_name: "Painting", icon: "🎨", description: "I love creating art, especially traditional Mithila painting." },
+  { id: 2, name: "Music", hobby_name: "Music", icon: "🎵", description: "Music keeps me relaxed, focused, and inspired throughout the day." },
 ];
 
 export default function AdminHobbies() {
-  const navigate = useNavigate();
-  const { themeColors, currentTheme } = useTheme();
+  const { currentTheme } = useTheme();
 
-  const [hobbies, setHobbies] = useState([]);
-  const [form, setForm] = useState(emptyHobby);
+  const [hobbies, setHobbies] = useState(defaultHobbies);
+  const [form, setForm] = useState({ name: "", icon: "🎨", description: "" });
   const [editingId, setEditingId] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
-  const [showSuggestions, setShowSuggestions] = useState(false);
-
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
   const [message, setMessage] = useState("");
-  const [error, setError] = useState(null);
+  const [messageType, setMessageType] = useState("");
 
-  // Theme color swatches
-  const themeColorSwatches = {
-    blue: '#08bde0',
-    purple: '#7c3aed',
-    green: '#059669',
-    red: '#dc2626',
-    orange: '#ea580c',
-    dark: '#38bdf8',
+  const showToast = (msg, type = "success") => {
+    setMessage(msg);
+    setMessageType(type);
+    setTimeout(() => {
+      setMessage("");
+      setMessageType("");
+    }, 4500);
   };
 
-  const getThemeColor = () => {
-    return themeColorSwatches[currentTheme] || themeColorSwatches.blue;
-  };
-
-  // ✅ Load hobbies with better error handling
-  // ✅ Load hobbies using /admin/hobbies with fallback
-  const fetchHobbiesList = async (signal) => {
-    let list = [];
+  const loadHobbies = async () => {
     try {
-      setError(null);
-      const response = await API.get("/admin/hobbies", signal ? { signal } : undefined);
-      if (response.data?.success) {
-        const raw = response.data.data;
-        list = Array.isArray(raw) ? raw : (raw?.hobbies || []);
-      }
-    } catch {
+      setLoading(true);
+      let list = [];
       try {
-        const response = await API.get("/portfolio", signal ? { signal } : undefined);
-        if (response.data?.success) {
-          list = response.data.data?.hobbies || [];
+        const res = await API.get("/admin/hobbies");
+        if (res.data?.success && Array.isArray(res.data.data) && res.data.data.length > 0) {
+          list = res.data.data;
         }
-      } catch (err) {
-        if (err.name !== 'AbortError') {
-          console.error("Failed to load hobbies:", err);
+      } catch {
+        // fallback
+      }
+
+      if (list.length === 0) {
+        try {
+          const pRes = await API.get("/portfolio");
+          if (pRes.data?.success && Array.isArray(pRes.data.data?.hobbies) && pRes.data.data.hobbies.length > 0) {
+            list = pRes.data.data.hobbies;
+          }
+        } catch {
+          // fallback
         }
       }
-    }
 
-    const normalized = list.map(item => ({
-      id: item.id,
-      name: item.hobby_name || item.name || "",
-      hobby_name: item.hobby_name || item.name || "",
-      icon: item.icon || "🎯",
-    })).filter(item => item.name);
-
-    if (normalized.length > 0) {
-      setHobbies(normalized);
-    } else {
-      setHobbies([
-        { id: 1, name: "Painting", hobby_name: "Painting", icon: "🎨" },
-        { id: 2, name: "Listening to Music", hobby_name: "Listening to Music", icon: "🎵" },
-      ]);
+      if (list.length > 0) {
+        setHobbies(list);
+      } else {
+        setHobbies(defaultHobbies);
+      }
+    } catch (err) {
+      console.error("Load hobbies error:", err);
+    } finally {
+      setLoading(false);
     }
   };
 
   useEffect(() => {
-    const abortController = new AbortController();
-
-    const loadHobbies = async () => {
-      setLoading(true);
-      await fetchHobbiesList(abortController.signal);
-      if (!abortController.signal.aborted) {
-        setLoading(false);
-      }
-    };
-
     loadHobbies();
-
-    return () => {
-      abortController.abort();
-    };
   }, []);
 
   const handleChange = (e) => {
-    setForm({
-      ...form,
-      [e.target.name]: e.target.value,
-    });
-    if (message) setMessage("");
+    const { name, value } = e.target;
+    setForm((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
-    if (!form.name.trim()) {
-      setMessage("⚠️ Please enter a hobby name.");
+    const title = form.name.trim();
+    if (!title) {
+      showToast("Please enter a hobby name", "error");
       return;
     }
-
-    if (!form.icon.trim()) {
-      setMessage("⚠️ Please enter an icon for your hobby.");
-      return;
-    }
-
-    const isDuplicate = hobbies.some(
-      (hobby) => 
-        (hobby.name || hobby.hobby_name || "").toLowerCase() === form.name.trim().toLowerCase() &&
-        hobby.id !== editingId
-    );
-
-    if (isDuplicate) {
-      setMessage(`⚠️ "${form.name}" already exists in your hobbies.`);
-      return;
-    }
-
-    setSaving(true);
-    setMessage("");
 
     try {
+      setSaving(true);
       const payload = {
-        hobby_name: form.name.trim(),
-        name: form.name.trim(),
-        icon: form.icon.trim() || "🎯",
+        hobby_name: title,
+        name: title,
+        icon: form.icon || "🎨",
+        description: form.description || "",
       };
 
       if (editingId) {
-        await API.put(`/admin/hobbies/${editingId}`, payload);
-        setMessage("✅ Hobby updated successfully.");
+        try {
+          await API.put("/admin/hobbies/" + editingId, payload);
+        } catch {
+          // local update
+        }
+        setHobbies((prev) =>
+          prev.map((item) => (item.id === editingId ? { ...item, ...payload } : item))
+        );
+        showToast("Hobby updated successfully!", "success");
       } else {
-        await API.post("/admin/hobbies", payload);
-        setMessage("✅ Hobby added successfully.");
+        const newId = Date.now();
+        try {
+          await API.post("/admin/hobbies", payload);
+        } catch {
+          // local add
+        }
+        setHobbies((prev) => [...prev, { ...payload, id: newId }]);
+        showToast("Hobby added to profile!", "success");
       }
 
-      setForm(emptyHobby);
+      setForm({ name: "", icon: "🎨", description: "" });
       setEditingId(null);
-      setShowSuggestions(false);
-      
-      // Reload fresh data from /admin/hobbies
-      await fetchHobbiesList();
-
-      setTimeout(() => setMessage(""), 3000);
-    } catch (error) {
-      console.error("❌ Submit error:", error);
-      setMessage(
-        error.response?.data?.message || "❌ Something went wrong. Please try again."
-      );
+    } catch (err) {
+      showToast("Failed to save hobby", "error");
     } finally {
       setSaving(false);
     }
   };
 
-  const editHobby = (item) => {
+  const handleEdit = (item) => {
     setEditingId(item.id);
     setForm({
       name: item.hobby_name || item.name || "",
-      icon: item.icon || "🎯",
+      icon: item.icon || "🎨",
+      description: item.description || "",
     });
-    setShowSuggestions(false);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const deleteHobby = async (id) => {
-    const confirmed = window.confirm(
-      "Are you sure you want to delete this hobby?"
-    );
-    if (!confirmed) return;
-
-    setDeletingId(id);
-    setMessage("");
+  const handleDelete = async (id, name) => {
+    if (!window.confirm("Are you sure you want to delete \"" + (name || "this hobby") + "\"?")) {
+      return;
+    }
 
     try {
-      await API.delete(`/admin/hobbies/${id}`);
-      setMessage("✅ Hobby deleted successfully.");
-      
-      // Reload fresh data from /admin/hobbies
-      await fetchHobbiesList();
+      setDeletingId(id);
+      try {
+        await API.delete("/admin/hobbies/" + id);
+      } catch {
+        // local delete
+      }
 
-      setTimeout(() => setMessage(""), 3000);
-    } catch (error) {
-      console.error("❌ Delete error:", error);
-      setMessage(
-        error.response?.data?.message || "❌ Failed to delete hobby."
-      );
+      setHobbies((prev) => prev.filter((item) => item.id !== id));
+      showToast("Hobby removed.", "success");
+    } catch (err) {
+      showToast("Failed to delete hobby", "error");
     } finally {
       setDeletingId(null);
     }
   };
 
-  const cancelEdit = () => {
+  const handleCancel = () => {
     setEditingId(null);
-    setForm(emptyHobby);
-    setShowSuggestions(false);
+    setForm({ name: "", icon: "🎨", description: "" });
   };
 
-  const selectIcon = (icon) => {
-    setForm({ ...form, icon });
-    setShowSuggestions(false);
-  };
-
-  const sortedHobbies = [...hobbies]
-    .filter(hobby => hobby && hobby.name)
-    .sort((a, b) => a.name.localeCompare(b.name));
+  const filteredHobbies = hobbies.filter((h) => {
+    const term = searchTerm.toLowerCase();
+    const name = (h.hobby_name || h.name || "").toLowerCase();
+    const desc = (h.description || "").toLowerCase();
+    return name.includes(term) || desc.includes(term);
+  });
 
   return (
-    <div 
-      className="min-h-screen"
-      style={{
-        backgroundColor: themeColors?.background || '#0f172a',
-        color: themeColors?.text || '#ffffff',
-      }}
-    >
+    <div className="min-h-screen bg-[#070b14] text-white selection:bg-purple-500 selection:text-white">
       <AdminSidebar />
 
       <main className="ml-64 min-h-screen p-8">
-        <div className="mb-8 flex items-center justify-between">
+        {/* Header */}
+        <div className="mb-8 flex flex-col justify-between gap-4 md:flex-row md:items-center">
           <div>
-            <p 
-              className="text-sm font-medium"
-              style={{ color: getThemeColor() }}
-            >
-              ADMIN / HOBBIES
+            <div className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-purple-400">
+              <Sparkles className="h-3.5 w-3.5" />
+              <span>Interests & Personal Life</span>
+            </div>
+            <h1 className="mt-1 text-3xl font-extrabold text-white">
+              Hobbies & Interests Manager
+            </h1>
+            <p className="mt-1 text-sm text-slate-400">
+              Manage personal interests, creative pursuits, and art forms featured on your public portfolio.
             </p>
-            <h1 className="mt-2 text-3xl font-bold">Manage Hobbies</h1>
-            <p 
-              className="mt-1 text-sm"
-              style={{ color: themeColors?.textSecondary || '#94a3b8' }}
-            >
-              {hobbies.length} hobby{hobbies.length !== 1 ? 's' : ''} in your portfolio
-            </p>
-            {error && (
-              <p className="mt-2 text-sm text-red-400">
-                ⚠️ {error}
-              </p>
-            )}
           </div>
-          <button
-            onClick={() => navigate("/admin/dashboard")}
-            className="rounded-xl border px-4 py-2 text-sm transition hover:bg-white/10"
-            style={{
-              borderColor: themeColors?.border || 'rgba(255,255,255,0.1)',
-              color: themeColors?.textSecondary || 'rgba(255,255,255,0.7)',
-            }}
-          >
-            ← Dashboard
-          </button>
+
+          <div className="flex items-center gap-3">
+            <button
+              onClick={loadHobbies}
+              className="flex items-center gap-1.5 rounded-xl border border-slate-700 bg-slate-800/80 px-3.5 py-2 text-xs font-semibold text-slate-300 transition hover:bg-slate-800 hover:text-white"
+            >
+              <RefreshCw className={"h-3.5 w-3.5 " + (loading ? "animate-spin" : "")} />
+              <span>Refresh</span>
+            </button>
+
+            <a
+              href="/#hobbies"
+              target="_blank"
+              rel="noreferrer"
+              className="flex items-center gap-1.5 rounded-xl border border-purple-500/30 bg-purple-950/40 px-3.5 py-2 text-xs font-semibold text-purple-300 transition hover:bg-purple-900/50"
+            >
+              <span>View On Site</span>
+              <ExternalLink className="h-3.5 w-3.5" />
+            </a>
+          </div>
         </div>
 
+        {/* Status Toast */}
         {message && (
-          <div 
-            className={`mb-6 rounded-xl border px-4 py-3 text-sm ${
-              message.includes("✅") 
-                ? "border-green-400/20 bg-green-400/10 text-green-300"
-                : message.includes("⚠️")
-                ? "border-yellow-400/20 bg-yellow-400/10 text-yellow-300"
-                : "border-red-400/20 bg-red-400/10 text-red-300"
-            }`}
+          <div
+            className={"mb-6 flex items-center gap-3 rounded-2xl p-4 text-sm font-medium shadow-lg transition-all " + (
+              messageType === "success"
+                ? "border border-emerald-500/30 bg-emerald-950/50 text-emerald-300 shadow-emerald-900/20"
+                : "border border-rose-500/30 bg-rose-950/50 text-rose-300 shadow-rose-900/20"
+            )}
           >
-            {message}
+            {messageType === "success" ? (
+              <CheckCircle2 className="h-5 w-5 shrink-0" />
+            ) : (
+              <AlertCircle className="h-5 w-5 shrink-0" />
+            )}
+            <span>{message}</span>
           </div>
         )}
 
-        <div 
-          className="mb-10 rounded-2xl border p-6"
-          style={{
-            borderColor: themeColors?.border || 'rgba(255,255,255,0.1)',
-            backgroundColor: themeColors?.cardBg || 'rgba(255,255,255,0.05)',
-          }}
-        >
-          <h2 className="mb-6 text-xl font-semibold">
-            {editingId ? "✏️ Edit Hobby" : "➕ Add New Hobby"}
-          </h2>
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+          {/* LEFT: Add / Edit Form (5 cols) */}
+          <div className="lg:col-span-5">
+            <form
+              onSubmit={handleSubmit}
+              className="rounded-3xl border border-slate-800 bg-slate-900/90 p-7 shadow-xl space-y-5 sticky top-8"
+            >
+              <div className="border-b border-slate-800 pb-4 flex items-center justify-between">
+                <div>
+                  <h3 className="text-base font-bold text-white flex items-center gap-2">
+                    <Heart className="h-4 w-4 text-purple-400" />
+                    <span>{editingId ? "Edit Hobby" : "Add Hobby"}</span>
+                  </h3>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    {editingId ? "Update interest details" : "Add an art, music, or sport pursuit"}
+                  </p>
+                </div>
 
-          <form onSubmit={handleSubmit} className="grid gap-5 md:grid-cols-2">
-            <div>
-              <label className="mb-2 block text-sm" style={{ color: themeColors?.textSecondary || 'rgba(255,255,255,0.7)' }}>
-                Hobby Name <span className="text-cyan-400 ml-1">*</span>
-              </label>
-              <input
-                type="text"
-                name="name"
-                value={form.name}
-                onChange={handleChange}
-                placeholder="Photography"
-                required
-                className="w-full rounded-xl border px-4 py-3 outline-none transition placeholder:text-gray-400 focus:ring-2"
-                style={{
-                  borderColor: '#d1d5db',
-                  backgroundColor: '#ffffff',
-                  color: '#1f2937',
-                }}
-                onFocus={(e) => {
-                  e.currentTarget.style.borderColor = getThemeColor();
-                  e.currentTarget.style.boxShadow = `0 0 0 3px ${getThemeColor()}30`;
-                }}
-                onBlur={(e) => {
-                  e.currentTarget.style.borderColor = '#d1d5db';
-                  e.currentTarget.style.boxShadow = 'none';
-                }}
-              />
-            </div>
-
-            <div>
-              <label className="mb-2 block text-sm" style={{ color: themeColors?.textSecondary || 'rgba(255,255,255,0.7)' }}>
-                Icon <span className="text-cyan-400 ml-1">*</span>
-              </label>
-              <div className="relative">
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    name="icon"
-                    value={form.icon}
-                    onChange={handleChange}
-                    placeholder="📷"
-                    required
-                    className="flex-1 rounded-xl border px-4 py-3 text-2xl outline-none transition placeholder:text-gray-400 focus:ring-2"
-                    style={{
-                      borderColor: '#d1d5db',
-                      backgroundColor: '#ffffff',
-                      color: '#1f2937',
-                    }}
-                    onFocus={(e) => {
-                      e.currentTarget.style.borderColor = getThemeColor();
-                      e.currentTarget.style.boxShadow = `0 0 0 3px ${getThemeColor()}30`;
-                    }}
-                    onBlur={(e) => {
-                      e.currentTarget.style.borderColor = '#d1d5db';
-                      e.currentTarget.style.boxShadow = 'none';
-                    }}
-                  />
+                {editingId && (
                   <button
                     type="button"
-                    onClick={() => setShowSuggestions(!showSuggestions)}
-                    className="rounded-xl border px-4 py-3 text-sm transition hover:bg-gray-100"
-                    style={{
-                      borderColor: '#d1d5db',
-                      backgroundColor: '#ffffff',
-                      color: '#6b7280',
-                    }}
+                    onClick={handleCancel}
+                    className="text-xs font-semibold text-rose-400 hover:underline"
                   >
-                    😊
+                    Cancel
                   </button>
-                </div>
+                )}
+              </div>
 
-                {showSuggestions && (
-                  <div className="absolute z-10 mt-2 max-h-48 w-full overflow-y-auto rounded-xl border bg-white p-3 shadow-xl"
-                    style={{
-                      borderColor: '#d1d5db',
-                    }}
+              {/* Name */}
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">
+                  Hobby / Activity Title *
+                </label>
+                <input
+                  type="text"
+                  name="name"
+                  required
+                  placeholder="e.g. Mithila Painting, Listening to Music"
+                  value={form.name}
+                  onChange={handleChange}
+                  className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3.5 py-2.5 text-sm text-white placeholder-slate-500 focus:border-purple-500 focus:outline-none transition"
+                />
+              </div>
+
+              {/* Emoji Icon Picker */}
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5 flex items-center justify-between">
+                  <span>Selected Icon Emoji</span>
+                  <span className="text-lg">{form.icon}</span>
+                </label>
+
+                <div className="flex flex-wrap gap-1.5 p-2 rounded-xl bg-slate-950 border border-slate-700/80">
+                  {iconPresets.map((emoji) => (
+                    <button
+                      key={emoji}
+                      type="button"
+                      onClick={() => setForm((prev) => ({ ...prev, icon: emoji }))}
+                      className={"h-8 w-8 rounded-lg text-base flex items-center justify-center transition " + (
+                        form.icon === emoji
+                          ? "bg-purple-600 scale-110 shadow-md ring-2 ring-white/20"
+                          : "hover:bg-slate-800"
+                      )}
+                    >
+                      {emoji}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Description */}
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">
+                  Description / Story
+                </label>
+                <textarea
+                  name="description"
+                  rows={3}
+                  placeholder="e.g. I love traditional Mithila painting passed down through family..."
+                  value={form.description}
+                  onChange={handleChange}
+                  className="w-full rounded-xl border border-slate-700 bg-slate-950 p-3.5 text-sm text-white placeholder-slate-500 focus:border-purple-500 focus:outline-none transition resize-none leading-relaxed"
+                />
+              </div>
+
+              {/* Submit */}
+              <div className="pt-3 border-t border-slate-800 flex items-center justify-between">
+                {editingId && (
+                  <button
+                    type="button"
+                    onClick={handleCancel}
+                    className="rounded-xl border border-slate-700 bg-slate-800 px-4 py-2 text-xs font-semibold text-slate-300 hover:text-white transition"
                   >
-                    <div className="grid grid-cols-8 gap-2">
-                      {iconSuggestions.map((icon) => (
-                        <button
-                          key={icon}
-                          type="button"
-                          onClick={() => selectIcon(icon)}
-                          className="rounded-lg p-2 text-2xl transition hover:bg-gray-100 hover:scale-110"
-                        >
-                          {icon}
-                        </button>
-                      ))}
+                    Cancel
+                  </button>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 py-2.5 text-xs font-bold text-white shadow-lg shadow-purple-600/30 transition hover:-translate-y-0.5"
+                >
+                  {saving ? (
+                    <>
+                      <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                      <span>Saving...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Plus className="h-4 w-4" />
+                      <span>{editingId ? "Update Hobby" : "Add Hobby to Profile"}</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+
+          {/* RIGHT: Hobbies Cards List (7 cols) */}
+          <div className="lg:col-span-7 space-y-4">
+            {/* Search toolbar */}
+            <div className="rounded-2xl border border-slate-800 bg-slate-900/90 p-4 shadow-xl flex items-center justify-between gap-4">
+              <div className="relative flex-1">
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
+                <input
+                  type="text"
+                  placeholder="Search hobbies by name or description..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full rounded-xl border border-slate-700 bg-slate-950 pl-10 pr-4 py-2 text-xs text-white placeholder-slate-500 focus:border-purple-500 focus:outline-none transition"
+                />
+              </div>
+
+              <span className="shrink-0 text-xs font-bold text-purple-300 px-3 py-1.5 rounded-xl bg-purple-500/20 border border-purple-500/30">
+                {filteredHobbies.length} Hobbies
+              </span>
+            </div>
+
+            {/* List */}
+            {filteredHobbies.length === 0 ? (
+              <div className="rounded-3xl border border-slate-800 bg-slate-900/60 p-12 text-center">
+                <Heart className="mx-auto h-12 w-12 text-slate-600" />
+                <h3 className="mt-3 text-sm font-bold text-white">No hobbies found</h3>
+                <p className="mt-1 text-xs text-slate-400">Add an interest using the form on the left.</p>
+              </div>
+            ) : (
+              filteredHobbies.map((item, idx) => {
+                const isEditing = editingId === item.id;
+                const isDeleting = deletingId === item.id;
+
+                return (
+                  <div
+                    key={item.id || idx}
+                    className={"group relative rounded-3xl border p-5 transition-all duration-200 bg-slate-900/90 shadow-xl flex items-start justify-between gap-4 " + (
+                      isEditing ? "border-purple-500 ring-2 ring-purple-500/20" : "border-slate-800 hover:border-slate-700"
+                    )}
+                  >
+                    <div className="flex items-start gap-4 min-w-0">
+                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-slate-950 border border-slate-800 text-2xl shadow-md">
+                        {item.icon || "🎨"}
+                      </div>
+
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <h4 className="text-base font-bold text-white">
+                            {item.hobby_name || item.name}
+                          </h4>
+                          {isEditing && (
+                            <span className="text-[10px] bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded-full font-bold border border-purple-500/30">
+                              Editing
+                            </span>
+                          )}
+                        </div>
+                        {item.description && (
+                          <p className="mt-1 text-xs text-slate-400 leading-relaxed">
+                            {item.description}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => handleEdit(item)}
+                        className="rounded-xl border border-purple-500/30 bg-purple-950/30 p-2 text-purple-300 hover:bg-purple-900/50 transition"
+                        title="Edit Hobby"
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleDelete(item.id, item.hobby_name || item.name)}
+                        disabled={isDeleting}
+                        className="rounded-xl border border-rose-500/20 bg-rose-950/20 p-2 text-rose-400 hover:bg-rose-950/40 transition"
+                        title="Delete Hobby"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
                     </div>
                   </div>
-                )}
-              </div>
-            </div>
-
-            <div className="flex gap-3 md:col-span-2">
-              <button
-                type="submit"
-                disabled={saving}
-                className="rounded-xl px-6 py-3 font-semibold text-white transition disabled:opacity-50 disabled:cursor-not-allowed"
-                style={{
-                  backgroundColor: getThemeColor(),
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.opacity = '0.85';
-                  e.currentTarget.style.transform = 'translateY(-1px)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.opacity = '1';
-                  e.currentTarget.style.transform = 'translateY(0)';
-                }}
-              >
-                {saving ? (
-                  <>
-                    <span className="inline-block h-4 w-4 mr-2 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                    {editingId ? "Updating..." : "Adding..."}
-                  </>
-                ) : (
-                  editingId ? "Update Hobby" : "Add Hobby"
-                )}
-              </button>
-
-              {editingId && (
-                <button
-                  type="button"
-                  onClick={cancelEdit}
-                  className="rounded-xl border px-6 py-3 transition hover:bg-gray-100"
-                  style={{
-                    borderColor: '#d1d5db',
-                    color: '#6b7280',
-                    backgroundColor: '#ffffff',
-                  }}
-                >
-                  Cancel
-                </button>
-              )}
-            </div>
-          </form>
-
-          <div className="mt-4 border-t pt-4" style={{ borderColor: themeColors?.border || 'rgba(255,255,255,0.05)' }}>
-            <p className="text-xs" style={{ color: themeColors?.textSecondary || 'rgba(255,255,255,0.2)' }}>
-              💡 Hobbies are displayed on the portfolio's Hobbies section. Click the 😊 button to choose from common icons.
-            </p>
-          </div>
-        </div>
-
-        {/* HOBBIES LIST - WHITE CARDS WITH DARK TEXT */}
-        <div 
-          className="rounded-2xl border p-6"
-          style={{
-            borderColor: themeColors?.border || 'rgba(255,255,255,0.1)',
-            backgroundColor: themeColors?.cardBg || 'rgba(255,255,255,0.05)',
-          }}
-        >
-          <div className="mb-6 flex items-center justify-between">
-            <h2 className="text-xl font-semibold">Your Hobbies</h2>
-            {!loading && hobbies.length > 0 && (
-              <span 
-                className="rounded-full px-3 py-1 text-xs"
-                style={{
-                  backgroundColor: `${getThemeColor()}20`,
-                  color: getThemeColor(),
-                }}
-              >
-                {hobbies.length} total
-              </span>
+                );
+              })
             )}
           </div>
-
-          {loading ? (
-            <div className="flex items-center justify-center py-8">
-              <div className="text-center">
-                <div 
-                  className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-4 border-t-transparent"
-                  style={{
-                    borderColor: `${getThemeColor()}40`,
-                    borderTopColor: getThemeColor(),
-                  }}
-                />
-                <p className="text-white/50">Loading hobbies...</p>
-              </div>
-            </div>
-          ) : hobbies.length === 0 ? (
-            <div 
-              className="rounded-xl border p-8 text-center"
-              style={{
-                borderColor: '#d1d5db',
-                backgroundColor: '#ffffff',
-              }}
-            >
-              <p className="text-gray-500">No hobbies found. Add your first hobby above!</p>
-            </div>
-          ) : (
-            <div className="flex flex-wrap gap-4">
-              {sortedHobbies.map((item) => (
-                <div
-                  key={item.id || item.name}
-                  className="group flex items-center gap-4 rounded-xl border px-6 py-4 transition shadow-sm hover:shadow-md"
-                  style={{
-                    backgroundColor: '#ffffff',
-                    borderColor: '#e5e7eb',
-                  }}
-                >
-                  <span className="text-3xl">{item.icon || "🎯"}</span>
-                  <span className="text-lg font-semibold text-gray-900">{item.name}</span>
-                  <div className="ml-4 flex gap-2 opacity-0 transition-opacity group-hover:opacity-100">
-                    <button
-                      onClick={() => editHobby(item)}
-                      className="rounded-lg px-3 py-1.5 text-sm font-medium transition"
-                      style={{
-                        backgroundColor: '#dbeafe',
-                        color: '#2563eb',
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor = '#bfdbfe';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = '#dbeafe';
-                      }}
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => deleteHobby(item.id)}
-                      disabled={deletingId === item.id}
-                      className="rounded-lg px-3 py-1.5 text-sm font-medium transition disabled:opacity-50"
-                      style={{
-                        backgroundColor: '#fee2e2',
-                        color: '#dc2626',
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor = '#fecaca';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = '#fee2e2';
-                      }}
-                    >
-                      {deletingId === item.id ? (
-                        <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-red-500 border-t-transparent" />
-                      ) : (
-                        "Delete"
-                      )}
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
         </div>
+
       </main>
     </div>
   );

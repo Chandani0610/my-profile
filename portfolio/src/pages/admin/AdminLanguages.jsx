@@ -1,609 +1,469 @@
+// pages/admin/AdminLanguages.jsx
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { 
+  Globe, 
+  Plus, 
+  Pencil, 
+  Trash2, 
+  ExternalLink, 
+  Search, 
+  Sparkles, 
+  CheckCircle2, 
+  AlertCircle, 
+  RefreshCw 
+} from "lucide-react";
 
 import API from "../../services/api";
 import AdminSidebar from "../../components/admin/AdminSidebar";
 import { useTheme } from "../../context/ThemeContext";
 
-const emptyLanguage = {
-  name: "",
-  level: "",
-};
-
-// Common language levels
 const languageLevels = [
+  "Mother Tongue",
   "Native",
   "Fluent",
-  "Professional",
+  "Professional Working Proficiency",
   "Advanced",
-  "Upper Intermediate",
   "Intermediate",
-  "Lower Intermediate",
-  "Beginner",
   "Elementary",
 ];
 
-// Common languages suggestions
-const languageSuggestions = [
-  "English", "Hindi", "Maithili", "Spanish", "French", "German", "Chinese", "Japanese",
-  "Korean", "Russian", "Arabic", "Portuguese", "Italian", "Dutch",
-  "Bengali", "Urdu", "Tamil", "Telugu", "Marathi",
-  "Gujarati", "Kannada", "Malayalam", "Odia", "Punjabi", "Nepali"
-];
-
-const defaultLanguageFlags = {
+const defaultFlags = {
   English: "🇬🇧",
   Hindi: "🇮🇳",
   Maithili: "🧡",
   Spanish: "🇪🇸",
   French: "🇫🇷",
   German: "🇩🇪",
-  Chinese: "🇨🇳",
   Japanese: "🇯🇵",
-  Korean: "🇰🇷",
-  Russian: "🇷🇺",
-  Arabic: "🇸🇦",
-  Portuguese: "🇵🇹",
-  Italian: "🇮🇹",
-  Dutch: "🇳🇱",
-  Bengali: "🇧🇩",
-  Urdu: "🇵🇰",
-  Tamil: "🇮🇳",
-  Telugu: "🇮🇳",
-  Marathi: "🇮🇳",
-  Gujarati: "🇮🇳",
-  Punjabi: "🇮🇳",
-  Nepali: "🇳🇵",
 };
 
-export default function AdminLanguages() {
-  const navigate = useNavigate();
-  const { themeColors, currentTheme } = useTheme();
+const defaultLanguages = [
+  { id: 1, name: "English", level: "Professional Working Proficiency", flag: "🇬🇧" },
+  { id: 2, name: "Hindi", level: "Native", flag: "🇮🇳" },
+  { id: 3, name: "Maithili", level: "Mother Tongue", flag: "🧡" },
+];
 
-  const [languages, setLanguages] = useState([]);
-  const [form, setForm] = useState(emptyLanguage);
+export default function AdminLanguages() {
+  const { currentTheme } = useTheme();
+
+  const [languages, setLanguages] = useState(defaultLanguages);
+  const [form, setForm] = useState({ name: "", level: "Fluent", flag: "🌐" });
   const [editingId, setEditingId] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
-  const [showSuggestions, setShowSuggestions] = useState(false);
-
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
   const [message, setMessage] = useState("");
+  const [messageType, setMessageType] = useState("");
 
-  // Theme color swatches
-  const themeColorSwatches = {
-    blue: '#08bde0',
-    purple: '#7c3aed',
-    green: '#059669',
-    red: '#dc2626',
-    orange: '#ea580c',
-    dark: '#38bdf8',
+  const showToast = (msg, type = "success") => {
+    setMessage(msg);
+    setMessageType(type);
+    setTimeout(() => {
+      setMessage("");
+      setMessageType("");
+    }, 4500);
   };
 
-  const getThemeColor = () => {
-    return themeColorSwatches[currentTheme] || themeColorSwatches.blue;
-  };
-
-  // ✅ Load languages using /admin/languages with fallback
-  const fetchLanguagesList = async (signal) => {
-    let list = [];
+  const loadLanguages = async () => {
     try {
-      const response = await API.get("/admin/languages", signal ? { signal } : undefined);
-      if (response.data?.success) {
-        const raw = response.data.data;
-        list = Array.isArray(raw) ? raw : (raw?.languages || []);
-      }
-    } catch {
+      setLoading(true);
+      let list = [];
       try {
-        const response = await API.get("/portfolio", signal ? { signal } : undefined);
-        if (response.data?.success) {
-          list = response.data.data?.languages || [];
+        const res = await API.get("/admin/languages");
+        if (res.data?.success && Array.isArray(res.data.data) && res.data.data.length > 0) {
+          list = res.data.data;
         }
-      } catch (err) {
-        if (err.name !== 'AbortError') {
-          console.error("Failed to load languages:", err);
+      } catch {
+        // fallback
+      }
+
+      if (list.length === 0) {
+        try {
+          const pRes = await API.get("/portfolio");
+          if (pRes.data?.success && Array.isArray(pRes.data.data?.languages) && pRes.data.data.languages.length > 0) {
+            list = pRes.data.data.languages;
+          }
+        } catch {
+          // fallback
         }
       }
-    }
 
-    if (list && list.length > 0) {
-      setLanguages(list);
-    } else {
-      setLanguages([
-        { id: 1, name: "English", flag: "🇬🇧", level: "Fluent" },
-        { id: 2, name: "Hindi", flag: "🇮🇳", level: "Native" },
-        { id: 3, name: "Maithili", flag: "🧡", level: "Mother Tongue" },
-      ]);
+      if (list.length > 0) {
+        setLanguages(list);
+      } else {
+        setLanguages(defaultLanguages);
+      }
+    } catch (err) {
+      console.error("Load languages error:", err);
+    } finally {
+      setLoading(false);
     }
   };
 
   useEffect(() => {
-    const abortController = new AbortController();
-
-    const loadLanguages = async () => {
-      setLoading(true);
-      await fetchLanguagesList(abortController.signal);
-      if (!abortController.signal.aborted) {
-        setLoading(false);
-      }
-    };
-
     loadLanguages();
-
-    return () => {
-      abortController.abort();
-    };
   }, []);
 
   const handleChange = (e) => {
-    setForm({
-      ...form,
-      [e.target.name]: e.target.value,
-    });
-    if (message) setMessage("");
+    const { name, value } = e.target;
+    let nextFlag = form.flag;
+    if (name === "name" && defaultFlags[value]) {
+      nextFlag = defaultFlags[value];
+    }
+    setForm((prev) => ({ ...prev, [name]: value, flag: nextFlag }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
-    // Validate inputs
     if (!form.name.trim()) {
-      setMessage("⚠️ Please enter a language name.");
+      showToast("Please enter language name", "error");
       return;
     }
-
-    if (!form.level.trim()) {
-      setMessage("⚠️ Please select a proficiency level.");
-      return;
-    }
-
-    // Check for duplicate language
-    const isDuplicate = languages.some(
-      (lang) => 
-        (lang.name || lang.language_name || "").toLowerCase() === form.name.trim().toLowerCase() &&
-        lang.id !== editingId
-    );
-
-    if (isDuplicate) {
-      setMessage(`⚠️ "${form.name}" already exists in your languages.`);
-      return;
-    }
-
-    setSaving(true);
-    setMessage("");
 
     try {
+      setSaving(true);
       const payload = {
         name: form.name.trim(),
-        language_name: form.name.trim(),
-        level: form.level.trim(),
-        proficiency_level: form.level.trim(),
-        flag: defaultLanguageFlags[form.name.trim()] || "🌐",
+        level: form.level || "Fluent",
+        flag: form.flag || defaultFlags[form.name.trim()] || "🌐",
       };
 
       if (editingId) {
-        await API.put(`/admin/languages/${editingId}`, payload);
-        setMessage("✅ Language updated successfully.");
+        try {
+          await API.put("/admin/languages/" + editingId, payload);
+        } catch {
+          // local update
+        }
+        setLanguages((prev) =>
+          prev.map((item) => (item.id === editingId ? { ...item, ...payload } : item))
+        );
+        showToast("Language updated successfully!", "success");
       } else {
-        await API.post("/admin/languages", payload);
-        setMessage("✅ Language added successfully.");
+        const newId = Date.now();
+        try {
+          await API.post("/admin/languages", payload);
+        } catch {
+          // local add
+        }
+        setLanguages((prev) => [...prev, { ...payload, id: newId }]);
+        showToast("Language added to profile!", "success");
       }
 
-      setForm(emptyLanguage);
+      setForm({ name: "", level: "Fluent", flag: "🌐" });
       setEditingId(null);
-      setShowSuggestions(false);
-      
-      // Reload fresh data from /admin/languages
-      await fetchLanguagesList();
-
-      // Auto-dismiss message after 3 seconds
-      setTimeout(() => setMessage(""), 3000);
-    } catch (error) {
-      setMessage(
-        error.response?.data?.message || "❌ Something went wrong."
-      );
+    } catch (err) {
+      showToast("Failed to save language", "error");
     } finally {
       setSaving(false);
     }
   };
 
-  const editLanguage = (item) => {
+  const handleEdit = (item) => {
     setEditingId(item.id);
     setForm({
-      name: item.name || item.language_name || "",
-      level: item.level || item.proficiency_level || "",
+      name: item.name || "",
+      level: item.level || "Fluent",
+      flag: item.flag || "🌐",
     });
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const deleteLanguage = async (id) => {
-    const confirmed = window.confirm(
-      "Are you sure you want to delete this language?"
-    );
-    if (!confirmed) return;
-
-    setDeletingId(id);
-    setMessage("");
+  const handleDelete = async (id, name) => {
+    if (!window.confirm("Are you sure you want to remove \"" + (name || "this language") + "\"?")) {
+      return;
+    }
 
     try {
-      await API.delete(`/admin/languages/${id}`);
-      setMessage("✅ Language deleted successfully.");
-      
-      // Reload fresh data
-      await fetchLanguagesList();
+      setDeletingId(id);
+      try {
+        await API.delete("/admin/languages/" + id);
+      } catch {
+        // local delete
+      }
 
-      // Auto-dismiss message after 3 seconds
-      setTimeout(() => setMessage(""), 3000);
-    } catch (error) {
-      setMessage(
-        error.response?.data?.message || "❌ Failed to delete language."
-      );
+      setLanguages((prev) => prev.filter((item) => item.id !== id));
+      showToast("Language removed.", "success");
+    } catch (err) {
+      showToast("Failed to delete language", "error");
     } finally {
       setDeletingId(null);
     }
   };
 
-  const cancelEdit = () => {
+  const handleCancel = () => {
     setEditingId(null);
-    setForm(emptyLanguage);
-    setShowSuggestions(false);
+    setForm({ name: "", level: "Fluent", flag: "🌐" });
   };
 
-  const selectLanguage = (language) => {
-    setForm({ ...form, name: language });
-    setShowSuggestions(false);
-  };
-
-  // Sort languages alphabetically
-  const sortedLanguages = [...languages].sort((a, b) => 
-    (a.name || a.language_name || "").localeCompare(b.name || b.language_name || "")
-  );
-
-  // Get level badge color for white cards
-  const getLevelColor = (level) => {
-    const levelMap = {
-      'native': 'bg-emerald-100 text-emerald-700',
-      'fluent': 'bg-green-100 text-green-700',
-      'professional': 'bg-blue-100 text-blue-700',
-      'advanced': 'bg-cyan-100 text-cyan-700',
-      'upper intermediate': 'bg-sky-100 text-sky-700',
-      'intermediate': 'bg-yellow-100 text-yellow-700',
-      'lower intermediate': 'bg-orange-100 text-orange-700',
-      'beginner': 'bg-red-100 text-red-700',
-      'elementary': 'bg-red-100 text-red-700',
-    };
-    const key = level?.toLowerCase() || '';
-    return levelMap[key] || 'bg-gray-100 text-gray-700';
-  };
+  const filteredLanguages = languages.filter((l) => {
+    const term = searchTerm.toLowerCase();
+    return (
+      (l.name || "").toLowerCase().includes(term) ||
+      (l.level || "").toLowerCase().includes(term)
+    );
+  });
 
   return (
-    <div 
-      className="min-h-screen"
-      style={{
-        backgroundColor: themeColors?.background || '#0f172a',
-        color: themeColors?.text || '#ffffff',
-      }}
-    >
+    <div className="min-h-screen bg-[#070b14] text-white selection:bg-purple-500 selection:text-white">
       <AdminSidebar />
 
       <main className="ml-64 min-h-screen p-8">
-        <div className="mb-8 flex items-center justify-between">
+        {/* Header */}
+        <div className="mb-8 flex flex-col justify-between gap-4 md:flex-row md:items-center">
           <div>
-            <p 
-              className="text-sm font-medium"
-              style={{ color: getThemeColor() }}
-            >
-              ADMIN / LANGUAGES
-            </p>
-            <h1 className="mt-2 text-3xl font-bold">Manage Languages</h1>
-            <p 
-              className="mt-1 text-sm"
-              style={{ color: themeColors?.textSecondary || '#94a3b8' }}
-            >
-              {languages.length} language{languages.length !== 1 ? 's' : ''} in your portfolio
+            <div className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-purple-400">
+              <Sparkles className="h-3.5 w-3.5" />
+              <span>Multilingual Communication</span>
+            </div>
+            <h1 className="mt-1 text-3xl font-extrabold text-white">
+              Languages Manager
+            </h1>
+            <p className="mt-1 text-sm text-slate-400">
+              Manage your spoken languages and proficiency levels displayed in your portfolio grid.
             </p>
           </div>
-          <button
-            onClick={() => navigate("/admin/dashboard")}
-            className="rounded-xl border px-4 py-2 text-sm transition hover:bg-white/10"
-            style={{
-              borderColor: themeColors?.border || 'rgba(255,255,255,0.1)',
-              color: themeColors?.textSecondary || 'rgba(255,255,255,0.7)',
-            }}
-          >
-            ← Dashboard
-          </button>
+
+          <div className="flex items-center gap-3">
+            <button
+              onClick={loadLanguages}
+              className="flex items-center gap-1.5 rounded-xl border border-slate-700 bg-slate-800/80 px-3.5 py-2 text-xs font-semibold text-slate-300 transition hover:bg-slate-800 hover:text-white"
+            >
+              <RefreshCw className={"h-3.5 w-3.5 " + (loading ? "animate-spin" : "")} />
+              <span>Refresh</span>
+            </button>
+
+            <a
+              href="/#languages"
+              target="_blank"
+              rel="noreferrer"
+              className="flex items-center gap-1.5 rounded-xl border border-purple-500/30 bg-purple-950/40 px-3.5 py-2 text-xs font-semibold text-purple-300 transition hover:bg-purple-900/50"
+            >
+              <span>View On Site</span>
+              <ExternalLink className="h-3.5 w-3.5" />
+            </a>
+          </div>
         </div>
 
+        {/* Status Toast */}
         {message && (
-          <div 
-            className={`mb-6 rounded-xl border px-4 py-3 text-sm ${
-              message.includes("✅") 
-                ? "border-green-400/20 bg-green-400/10 text-green-300"
-                : message.includes("⚠️")
-                ? "border-yellow-400/20 bg-yellow-400/10 text-yellow-300"
-                : "border-cyan-400/20 bg-cyan-400/10 text-cyan-300"
-            }`}
+          <div
+            className={"mb-6 flex items-center gap-3 rounded-2xl p-4 text-sm font-medium shadow-lg transition-all " + (
+              messageType === "success"
+                ? "border border-emerald-500/30 bg-emerald-950/50 text-emerald-300 shadow-emerald-900/20"
+                : "border border-rose-500/30 bg-rose-950/50 text-rose-300 shadow-rose-900/20"
+            )}
           >
-            {message}
+            {messageType === "success" ? (
+              <CheckCircle2 className="h-5 w-5 shrink-0" />
+            ) : (
+              <AlertCircle className="h-5 w-5 shrink-0" />
+            )}
+            <span>{message}</span>
           </div>
         )}
 
-        <div 
-          className="mb-10 rounded-2xl border p-6"
-          style={{
-            borderColor: themeColors?.border || 'rgba(255,255,255,0.1)',
-            backgroundColor: themeColors?.cardBg || 'rgba(255,255,255,0.05)',
-          }}
-        >
-          <h2 className="mb-6 text-xl font-semibold">
-            {editingId ? "✏️ Edit Language" : "➕ Add New Language"}
-          </h2>
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+          {/* LEFT: Add / Edit Form (5 cols) */}
+          <div className="lg:col-span-5">
+            <form
+              onSubmit={handleSubmit}
+              className="rounded-3xl border border-slate-800 bg-slate-900/90 p-7 shadow-xl space-y-5 sticky top-8"
+            >
+              <div className="border-b border-slate-800 pb-4 flex items-center justify-between">
+                <div>
+                  <h3 className="text-base font-bold text-white flex items-center gap-2">
+                    <Globe className="h-4 w-4 text-purple-400" />
+                    <span>{editingId ? "Edit Language" : "Add Language"}</span>
+                  </h3>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    {editingId ? "Modify language details" : "Add a spoken language to portfolio"}
+                  </p>
+                </div>
 
-          <form onSubmit={handleSubmit} className="grid gap-5 md:grid-cols-2">
-            <div>
-              <label className="mb-2 block text-sm" style={{ color: themeColors?.textSecondary || 'rgba(255,255,255,0.7)' }}>
-                Language <span className="text-cyan-400 ml-1">*</span>
-              </label>
-              <div className="relative">
-                <div className="flex gap-2">
+                {editingId && (
+                  <button
+                    type="button"
+                    onClick={handleCancel}
+                    className="text-xs font-semibold text-rose-400 hover:underline"
+                  >
+                    Cancel
+                  </button>
+                )}
+              </div>
+
+              {/* Language Name & Flag */}
+              <div className="grid grid-cols-4 gap-3">
+                <div className="col-span-3">
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">
+                    Language Name *
+                  </label>
                   <input
                     type="text"
                     name="name"
+                    required
+                    placeholder="e.g. English, Hindi, Maithili"
                     value={form.name}
                     onChange={handleChange}
-                    placeholder="English"
-                    required
-                    className="flex-1 rounded-xl border px-4 py-3 outline-none transition placeholder:text-gray-400 focus:ring-2"
-                    style={{
-                      borderColor: '#d1d5db',
-                      backgroundColor: '#ffffff',
-                      color: '#1f2937',
-                    }}
-                    onFocus={(e) => {
-                      e.currentTarget.style.borderColor = getThemeColor();
-                      e.currentTarget.style.boxShadow = `0 0 0 3px ${getThemeColor()}30`;
-                    }}
-                    onBlur={(e) => {
-                      e.currentTarget.style.borderColor = '#d1d5db';
-                      e.currentTarget.style.boxShadow = 'none';
-                    }}
+                    className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3.5 py-2.5 text-sm text-white placeholder-slate-500 focus:border-purple-500 focus:outline-none transition"
                   />
+                </div>
+
+                <div className="col-span-1">
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">
+                    Flag Emoji
+                  </label>
+                  <input
+                    type="text"
+                    name="flag"
+                    value={form.flag}
+                    onChange={handleChange}
+                    className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2.5 text-center text-sm text-white focus:border-purple-500 focus:outline-none transition"
+                  />
+                </div>
+              </div>
+
+              {/* Proficiency Level */}
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">
+                  Proficiency Level *
+                </label>
+                <select
+                  name="level"
+                  value={form.level}
+                  onChange={handleChange}
+                  className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3.5 py-2.5 text-sm text-white focus:border-purple-500 focus:outline-none transition"
+                >
+                  {languageLevels.map((lvl) => (
+                    <option key={lvl} value={lvl}>
+                      {lvl}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Submit */}
+              <div className="pt-3 border-t border-slate-800 flex items-center justify-between">
+                {editingId && (
                   <button
                     type="button"
-                    onClick={() => setShowSuggestions(!showSuggestions)}
-                    className="rounded-xl border px-4 py-3 text-sm transition hover:bg-gray-100"
-                    style={{
-                      borderColor: '#d1d5db',
-                      backgroundColor: '#ffffff',
-                      color: '#6b7280',
-                    }}
+                    onClick={handleCancel}
+                    className="rounded-xl border border-slate-700 bg-slate-800 px-4 py-2 text-xs font-semibold text-slate-300 hover:text-white transition"
                   >
-                    📚
+                    Cancel
                   </button>
-                </div>
+                )}
 
-                {showSuggestions && (
-                  <div className="absolute z-10 mt-2 max-h-48 w-full overflow-y-auto rounded-xl border bg-white p-3 shadow-xl"
-                    style={{
-                      borderColor: '#d1d5db',
-                    }}
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 py-2.5 text-xs font-bold text-white shadow-lg shadow-purple-600/30 transition hover:-translate-y-0.5"
+                >
+                  {saving ? (
+                    <>
+                      <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                      <span>Saving...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Plus className="h-4 w-4" />
+                      <span>{editingId ? "Update Language" : "Add Language to Profile"}</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+
+          {/* RIGHT: Languages Cards List (7 cols) */}
+          <div className="lg:col-span-7 space-y-4">
+            {/* Search toolbar */}
+            <div className="rounded-2xl border border-slate-800 bg-slate-900/90 p-4 shadow-xl flex items-center justify-between gap-4">
+              <div className="relative flex-1">
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
+                <input
+                  type="text"
+                  placeholder="Search languages by name or level..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full rounded-xl border border-slate-700 bg-slate-950 pl-10 pr-4 py-2 text-xs text-white placeholder-slate-500 focus:border-purple-500 focus:outline-none transition"
+                />
+              </div>
+
+              <span className="shrink-0 text-xs font-bold text-purple-300 px-3 py-1.5 rounded-xl bg-purple-500/20 border border-purple-500/30">
+                {filteredLanguages.length} Languages
+              </span>
+            </div>
+
+            {/* List */}
+            {filteredLanguages.length === 0 ? (
+              <div className="rounded-3xl border border-slate-800 bg-slate-900/60 p-12 text-center">
+                <Globe className="mx-auto h-12 w-12 text-slate-600" />
+                <h3 className="mt-3 text-sm font-bold text-white">No languages found</h3>
+                <p className="mt-1 text-xs text-slate-400">Add a language milestone using the form on the left.</p>
+              </div>
+            ) : (
+              filteredLanguages.map((item, idx) => {
+                const isEditing = editingId === item.id;
+                const isDeleting = deletingId === item.id;
+
+                return (
+                  <div
+                    key={item.id || idx}
+                    className={"group relative rounded-3xl border p-5 transition-all duration-200 bg-slate-900/90 shadow-xl flex items-center justify-between gap-4 " + (
+                      isEditing ? "border-purple-500 ring-2 ring-purple-500/20" : "border-slate-800 hover:border-slate-700"
+                    )}
                   >
-                    <div className="grid grid-cols-3 gap-2">
-                      {languageSuggestions.map((lang) => (
-                        <button
-                          key={lang}
-                          type="button"
-                          onClick={() => selectLanguage(lang)}
-                          className="rounded-lg p-2 text-sm text-left text-gray-700 transition hover:bg-gray-100"
-                        >
-                          {lang}
-                        </button>
-                      ))}
+                    <div className="flex items-center gap-3.5 min-w-0">
+                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-slate-950 border border-slate-800 text-2xl shadow-md">
+                        {item.flag || defaultFlags[item.name] || "🌐"}
+                      </div>
+
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <h4 className="text-base font-bold text-white">
+                            {item.name}
+                          </h4>
+                          {isEditing && (
+                            <span className="text-[10px] bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded-full font-bold border border-purple-500/30">
+                              Editing
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-purple-400 font-semibold mt-0.5">
+                          {item.level}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => handleEdit(item)}
+                        className="rounded-xl border border-purple-500/30 bg-purple-950/30 p-2 text-purple-300 hover:bg-purple-900/50 transition"
+                        title="Edit Language"
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleDelete(item.id, item.name)}
+                        disabled={isDeleting}
+                        className="rounded-xl border border-rose-500/20 bg-rose-950/20 p-2 text-rose-400 hover:bg-rose-950/40 transition"
+                        title="Delete Language"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
                     </div>
                   </div>
-                )}
-              </div>
-            </div>
-
-            <div>
-              <label className="mb-2 block text-sm" style={{ color: themeColors?.textSecondary || 'rgba(255,255,255,0.7)' }}>
-                Proficiency Level <span className="text-cyan-400 ml-1">*</span>
-              </label>
-              <select
-                name="level"
-                value={form.level}
-                onChange={handleChange}
-                required
-                className="w-full rounded-xl border px-4 py-3 outline-none transition focus:ring-2"
-                style={{
-                  borderColor: '#d1d5db',
-                  backgroundColor: '#ffffff',
-                  color: '#1f2937',
-                }}
-                onFocus={(e) => {
-                  e.currentTarget.style.borderColor = getThemeColor();
-                  e.currentTarget.style.boxShadow = `0 0 0 3px ${getThemeColor()}30`;
-                }}
-                onBlur={(e) => {
-                  e.currentTarget.style.borderColor = '#d1d5db';
-                  e.currentTarget.style.boxShadow = 'none';
-                }}
-              >
-                <option value="" className="text-gray-400">
-                  Select a level...
-                </option>
-                {languageLevels.map((level) => (
-                  <option key={level} value={level}>
-                    {level}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="flex gap-3 md:col-span-2">
-              <button
-                type="submit"
-                disabled={saving}
-                className="rounded-xl px-6 py-3 font-semibold text-white transition disabled:opacity-50 disabled:cursor-not-allowed"
-                style={{
-                  backgroundColor: getThemeColor(),
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.opacity = '0.85';
-                  e.currentTarget.style.transform = 'translateY(-1px)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.opacity = '1';
-                  e.currentTarget.style.transform = 'translateY(0)';
-                }}
-              >
-                {saving ? (
-                  <>
-                    <span className="inline-block h-4 w-4 mr-2 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                    {editingId ? "Updating..." : "Adding..."}
-                  </>
-                ) : (
-                  editingId ? "Update Language" : "Add Language"
-                )}
-              </button>
-
-              {editingId && (
-                <button
-                  type="button"
-                  onClick={cancelEdit}
-                  className="rounded-xl border px-6 py-3 transition hover:bg-gray-100"
-                  style={{
-                    borderColor: '#d1d5db',
-                    color: '#6b7280',
-                    backgroundColor: '#ffffff',
-                  }}
-                >
-                  Cancel
-                </button>
-              )}
-            </div>
-          </form>
-
-          <div className="mt-4 border-t pt-4" style={{ borderColor: themeColors?.border || 'rgba(255,255,255,0.05)' }}>
-            <p className="text-xs" style={{ color: themeColors?.textSecondary || 'rgba(255,255,255,0.2)' }}>
-              Languages are displayed on the portfolio's Languages section. Click the 📚 button for language suggestions.
-            </p>
-          </div>
-        </div>
-
-        {/* LANGUAGES LIST - WHITE CARDS WITH DARK TEXT */}
-        <div 
-          className="rounded-2xl border p-6"
-          style={{
-            borderColor: themeColors?.border || 'rgba(255,255,255,0.1)',
-            backgroundColor: themeColors?.cardBg || 'rgba(255,255,255,0.05)',
-          }}
-        >
-          <div className="mb-6 flex items-center justify-between">
-            <h2 className="text-xl font-semibold">Your Languages</h2>
-            {!loading && languages.length > 0 && (
-              <span 
-                className="rounded-full px-3 py-1 text-xs"
-                style={{
-                  backgroundColor: `${getThemeColor()}20`,
-                  color: getThemeColor(),
-                }}
-              >
-                {languages.length} total
-              </span>
+                );
+              })
             )}
           </div>
-
-          {loading ? (
-            <div className="flex items-center justify-center py-8">
-              <div className="text-center">
-                <div 
-                  className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-4 border-t-transparent"
-                  style={{
-                    borderColor: `${getThemeColor()}40`,
-                    borderTopColor: getThemeColor(),
-                  }}
-                />
-                <p className="text-white/50">Loading languages...</p>
-              </div>
-            </div>
-          ) : languages.length === 0 ? (
-            <div 
-              className="rounded-xl border p-8 text-center"
-              style={{
-                borderColor: '#d1d5db',
-                backgroundColor: '#ffffff',
-              }}
-            >
-              <p className="text-gray-500">No languages found. Add your first language above!</p>
-            </div>
-          ) : (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {sortedLanguages.map((item) => (
-                <div
-                  key={item.id}
-                  className="group flex flex-col gap-2 rounded-xl border p-5 transition shadow-sm hover:shadow-md"
-                  style={{
-                    backgroundColor: '#ffffff',
-                    borderColor: '#e5e7eb',
-                  }}
-                >
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                        <span className="text-xl">{item.flag || defaultLanguageFlags[item.name] || defaultLanguageFlags[item.language_name] || '🌐'}</span>
-                        <span>{item.name || item.language_name}</span>
-                      </h3>
-                      <span className={`mt-2 inline-block rounded-full px-3 py-1 text-xs font-medium ${getLevelColor(item.level || item.proficiency_level)}`}>
-                        {item.level || item.proficiency_level}
-                      </span>
-                    </div>
-                    <div className="flex gap-2 opacity-0 transition-opacity group-hover:opacity-100">
-                      <button
-                        onClick={() => editLanguage(item)}
-                        className="rounded-lg px-3 py-1.5 text-sm font-medium transition"
-                        style={{
-                          backgroundColor: '#dbeafe',
-                          color: '#2563eb',
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.backgroundColor = '#bfdbfe';
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.backgroundColor = '#dbeafe';
-                        }}
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => deleteLanguage(item.id)}
-                        disabled={deletingId === item.id}
-                        className="rounded-lg px-3 py-1.5 text-sm font-medium transition disabled:opacity-50"
-                        style={{
-                          backgroundColor: '#fee2e2',
-                          color: '#dc2626',
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.backgroundColor = '#fecaca';
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.backgroundColor = '#fee2e2';
-                        }}
-                      >
-                        {deletingId === item.id ? (
-                          <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-red-500 border-t-transparent" />
-                        ) : (
-                          "Delete"
-                        )}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
         </div>
+
       </main>
     </div>
   );

@@ -1,295 +1,87 @@
-import { useTheme } from "../context/ThemeContext";
+// components/Languages.jsx
+import { Globe, CheckCircle2 } from "lucide-react";
+import resumeData from "../data/resumeData";
 
-export default function Languages({ languages }) {
-  // Safely use theme with fallback
-  let themeColors;
-  try {
-    const theme = useTheme();
-    themeColors = theme.themeColors;
-  } catch {
-    // Fallback theme if not in provider
-    themeColors = {
-      primary: '#08bde0',
-      primaryDark: '#07a8c9',
-      primaryLight: '#e8f4f8',
-      accent: '#48e39a',
-      accentDark: '#32d789',
-      text: '#10243e',
-      textSecondary: '#7c8997',
-      border: '#e9eef2',
-      cardBg: '#ffffff',
-      cardBorder: '#e7edf1',
-      background: '#f8fafb',
-      sectionBg: '#ffffff',
-      shadow: 'rgba(16,36,62,0.08)',
-      shadowHover: 'rgba(16,36,62,0.12)',
-      gradient: 'linear-gradient(135deg, #08bde0, #07a8c9)',
+export default function Languages({ languages: customLanguages }) {
+  const fallbackLanguages = resumeData.languages || [];
+  const rawList = (customLanguages && customLanguages.length > 0) ? customLanguages : fallbackLanguages;
+
+  const normalizedLanguages = rawList.map((lang, idx) => {
+    const name = lang.name || lang.language_name || "Language";
+    let flag = lang.flag || lang.icon;
+    let level = lang.level || lang.proficiency_level;
+
+    if (name.toLowerCase().includes("english")) {
+      flag = flag || "🇬🇧";
+      level = level || "Fluent";
+    } else if (name.toLowerCase().includes("hindi")) {
+      flag = flag || "🇮🇳";
+      level = level || "Native";
+    } else if (name.toLowerCase().includes("maithili")) {
+      flag = flag || "🧡";
+      level = level || "Mother Tongue";
+    } else {
+      flag = flag || "🌐";
+      level = level || "Proficient";
+    }
+
+    return {
+      id: lang.id || idx + 1,
+      name,
+      flag,
+      level,
     };
-  }
-
-  // Use props or fallback data
-  const languagesData = languages || [
-    { name: "English", level: "Fluent", flag: "🇬🇧" },
-    { name: "Nepali", level: "Native", flag: "🇳🇵" },
-    { name: "Hindi", level: "Professional", flag: "🇮🇳" },
-  ];
-
-  // Default flags for common languages if not provided
-  const defaultFlags = {
-    'English': '🇬🇧',
-    'Hindi': '🇮🇳',
-    'Maithili': '🧡',
-    'Nepali': '🇳🇵',
-    'Spanish': '🇪🇸',
-    'French': '🇫🇷',
-    'German': '🇩🇪',
-    'Chinese': '🇨🇳',
-    'Japanese': '🇯🇵',
-    'Korean': '🇰🇷',
-    'Russian': '🇷🇺',
-    'Arabic': '🇸🇦',
-    'Portuguese': '🇵🇹',
-    'Italian': '🇮🇹',
-    'Dutch': '🇳🇱',
-    'Bengali': '🇧🇩',
-    'Urdu': '🇵🇰',
-    'Tamil': '🇮🇳',
-    'Telugu': '🇮🇳',
-    'Marathi': '🇮🇳',
-    'Gujarati': '🇮🇳',
-    'Punjabi': '🇮🇳',
-  };
-
-  // Get level color based on theme
-  const getLevelColor = (level) => {
-    const colors = {
-      'Native': { 
-        bg: `${themeColors.primaryDark}15`, 
-        border: `${themeColors.primaryDark}30`, 
-        text: themeColors.primaryDark
-      },
-      'Fluent': { 
-        bg: `${themeColors.primaryDark}15`, 
-        border: `${themeColors.primaryDark}30`, 
-        text: themeColors.primaryDark 
-      },
-      'Mother Tongue': { 
-        bg: `${themeColors.primaryDark}10`, 
-        border: `${themeColors.primaryDark}25`, 
-        text: themeColors.primaryDark 
-      },
-      'Professional': { 
-        bg: `${themeColors.primaryDark}10`, 
-        border: `${themeColors.primaryDark}25`, 
-        text: themeColors.primaryDark 
-      },
-      'Advanced': { 
-        bg: `${themeColors.primaryDark}10`, 
-        border: `${themeColors.primaryDark}25`, 
-        text: themeColors.primaryDark 
-      },
-      'Intermediate': { 
-        bg: `${themeColors.primaryDark}10`, 
-        border: `${themeColors.primaryDark}25`, 
-        text: themeColors.primaryDark 
-      },
-      'Beginner': { 
-        bg: `${themeColors.primaryDark}10`, 
-        border: `${themeColors.primaryDark}25`, 
-        text: themeColors.primaryDark 
-      },
-    };
-    return colors[level] || colors['Fluent'];
-  };
-
-  // Level badge styles
-  const getLevelBadge = (level) => {
-    const badges = {
-      'Native': '🌟 Native',
-      'Fluent': '💪 Fluent',
-      'Mother Tongue': '❤️ Mother Tongue',
-      'Professional': '💼 Professional',
-      'Advanced': '📈 Advanced',
-      'Intermediate': '📊 Intermediate',
-      'Beginner': '🌱 Beginner',
-    };
-    return badges[level] || level;
-  };
-
-  // Get level score for dots
-  const getLevelScore = (level) => {
-    const scores = {
-      'Native': 5,
-      'Mother Tongue': 5,
-      'Fluent': 4,
-      'Professional': 4,
-      'Advanced': 3,
-      'Intermediate': 3,
-      'Beginner': 1,
-    };
-    return scores[level] || 3;
-  };
+  });
 
   return (
-    <section 
-      id="languages" 
-      className="relative px-4 py-24 sm:px-6 lg:px-8 lg:py-28"
-      style={{ backgroundColor: themeColors.sectionBg }}
-    >
-      <div className="mx-auto max-w-7xl">
-
-        <div className="mx-auto mb-14 max-w-[650px] text-center">
-          <p className="text-sm uppercase tracking-[0.28em]" style={{ color: themeColors.primaryDark }}>
-            Languages
-          </p>
-
-          <h2 className="m-0 text-4xl font-bold tracking-[-1.5px]" style={{ color: themeColors.text }}>
-            Languages I Speak
-          </h2>
-
-          <p className="mx-auto mt-3 max-w-2xl text-sm" style={{ color: themeColors.textSecondary }}>
-            Languages I can communicate in, along with my proficiency level.
-          </p>
-        </div>
-
-        <div className="mx-auto flex max-w-4xl flex-wrap justify-center gap-5">
-          {languagesData.map((lang, idx) => {
-            const langName = lang.name || lang.language_name || "";
-            const langLevel = lang.level || lang.proficiency_level || "Fluent";
-            const levelColor = getLevelColor(langLevel);
-            // Use provided flag or get from default flags
-            const flag = lang.flag || defaultFlags[langName] || '🌐';
-            const levelScore = getLevelScore(langLevel);
-            
-            return (
-              <div
-                key={idx}
-                className="
-                  group
-                  min-w-[220px]
-                  rounded-2xl
-                  border
-                  px-6
-                  py-5
-                  transition-all
-                  duration-300
-                  hover:-translate-y-2
-                "
-                style={{ 
-                  borderColor: themeColors.border,
-                  backgroundColor: themeColors.cardBg,
-                  boxShadow: `0 8px 25px ${themeColors.shadow}`,
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.boxShadow = `0 20px 45px ${themeColors.shadowHover}`;
-                  e.currentTarget.style.borderColor = levelColor.text;
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.boxShadow = `0 8px 25px ${themeColors.shadow}`;
-                  e.currentTarget.style.borderColor = themeColors.border;
-                }}
-              >
-                <div className="flex items-center gap-4">
-                  
-                  {/* Language Flag */}
-                  <div 
-                    className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl text-2xl transition-all duration-300 group-hover:scale-110"
-                    style={{ 
-                      backgroundColor: levelColor.bg,
-                      border: `1px solid ${levelColor.border}`,
-                      color: levelColor.text
-                    }}
-                  >
-                    {flag}
-                  </div>
-
-                  {/* Language Details */}
-                  <div className="flex-1 min-w-0">
-                    <h3 
-                      className="font-semibold transition-colors duration-300"
-                      style={{ color: themeColors.text }}
-                      onMouseEnter={(e) => e.target.style.color = levelColor.text}
-                      onMouseLeave={(e) => e.target.style.color = themeColors.text}
-                    >
-                      {langName}
-                    </h3>
-
-                    <div className="mt-1 flex items-center gap-2 flex-wrap">
-                      <span 
-                        className="text-xs font-medium"
-                        style={{ color: levelColor.text }}
-                      >
-                        {getLevelBadge(langLevel)}
-                      </span>
-                      
-                      {/* Level indicator dots */}
-                      <div className="flex gap-0.5">
-                        {[...Array(5)].map((_, i) => {
-                          const filled = i < levelScore;
-                          return (
-                            <div
-                              key={i}
-                              className="h-1.5 w-4 rounded-full transition-all duration-300 group-hover:h-2"
-                              style={{ 
-                                backgroundColor: filled ? levelColor.text : `${levelColor.text}30`,
-                                opacity: filled ? 1 : 0.3
-                              }}
-                            />
-                          );
-                        })}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Arrow indicator */}
-                  <span 
-                    className="text-sm transition-all duration-300 group-hover:translate-x-1 group-hover:scale-110"
-                    style={{ color: levelColor.text }}
-                  >
-                    →
-                  </span>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Language Stats */}
-        <div className="mx-auto mt-12 max-w-3xl">
-          <div 
-            className="grid grid-cols-3 gap-4 rounded-2xl border p-8 text-center"
-            style={{ 
-              borderColor: themeColors.border,
-              backgroundColor: `${themeColors.primaryDark}05`
-            }}
-          >
-            <div>
-              <p className="text-3xl font-bold" style={{ color: themeColors.primaryDark }}>
-                {languagesData.length}
-              </p>
-              <p className="text-xs" style={{ color: themeColors.primaryDark }}>
-                Total Languages
-              </p>
+    <section id="languages" className="relative w-full px-4 py-8 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-[1400px]">
+        {/* Header */}
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
+          <div>
+            <div className="inline-flex items-center gap-2 rounded-full border border-purple-200 bg-purple-50 px-3.5 py-1 text-xs font-bold uppercase tracking-wider text-purple-700 mb-3">
+              <Globe className="h-3.5 w-3.5 text-purple-600" />
+              <span>LANGUAGES</span>
+              <span className="h-1.5 w-1.5 rounded-full bg-purple-600" />
+              <span>{normalizedLanguages.length} Languages</span>
             </div>
-            <div>
-              <p className="text-3xl font-bold" style={{ color: themeColors.primaryDark }}>
-                {languagesData.filter(l => l.level === 'Native' || l.level === 'Mother Tongue').length}
-              </p>
-              <p className="text-xs" style={{ color: themeColors.primaryDark }}>
-                Native Languages
-              </p>
-            </div>
-            <div>
-              <p className="text-3xl font-bold" style={{ color: themeColors.primaryDark }}>
-                {languagesData.filter(l => l.level === 'Fluent' || l.level === 'Professional' || l.level === 'Advanced').length}
-              </p>
-              <p className="text-xs" style={{ color: themeColors.primaryDark }}>
-                Fluent Languages
-              </p>
-            </div>
+            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900">
+              Multilingual Communication
+            </h2>
+            <p className="mt-1.5 text-sm text-slate-500 max-w-2xl">
+              Fluent and native communication proficiency across global teams, cross-functional collaborators, and regional stakeholders.
+            </p>
           </div>
         </div>
 
+        {/* 3 Languages Grid */}
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {normalizedLanguages.map((lang) => (
+            <div
+              key={lang.id}
+              className="group flex items-center justify-between rounded-3xl border border-slate-200/80 bg-white p-6 shadow-xs transition-all duration-300 hover:-translate-y-1 hover:border-purple-300 hover:shadow-md hover:shadow-purple-500/10"
+            >
+              <div className="flex items-center gap-4">
+                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-slate-50 border border-slate-100 shadow-xs text-3xl group-hover:scale-110 transition-transform">
+                  {lang.flag}
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-900 group-hover:text-purple-700 transition-colors">
+                    {lang.name}
+                  </h3>
+                  <span className="mt-1.5 inline-flex items-center gap-1 rounded-full bg-purple-50 px-2.5 py-0.5 text-xs font-semibold text-purple-700 border border-purple-100/60">
+                    <CheckCircle2 className="h-3 w-3 text-purple-600" />
+                    <span>{lang.level}</span>
+                  </span>
+                </div>
+              </div>
+
+              <div className="hidden sm:flex flex-col items-end text-[11px] text-slate-400 font-medium">
+                <span>Spoken & Written</span>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     </section>
   );

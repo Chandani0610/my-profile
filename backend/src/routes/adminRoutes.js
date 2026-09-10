@@ -1,6 +1,7 @@
 const express = require("express");
 
 const router = express.Router();
+const authMiddleware = require("../middleware/authMiddleware");
 
 const {
   // =====================================================
@@ -15,6 +16,7 @@ const {
   // =====================================================
   // PROJECTS
   // =====================================================
+  getProjects,
   createProject,
   updateProject,
   deleteProject,
@@ -69,6 +71,15 @@ const {
   // =====================================================
   upload,
   uploadImage,
+
+  // =====================================================
+  // RESUME
+  // =====================================================
+  uploadResume,
+  uploadResumeFile,
+  getResumeInfo,
+  setActiveResume,
+  deleteResume,
 } = require("../controllers/adminController");
 
 // =====================================================
@@ -85,7 +96,7 @@ router.post("/login", loginAdmin);
 router.post("/logout", logoutAdmin);
 
 // Get Current Logged-in Admin
-router.get("/me", getCurrentAdmin);
+router.get("/me", authMiddleware, getCurrentAdmin);
 
 // Dashboard Statistics (Fast COUNT)
 router.get("/stats", getDashboardStats);
@@ -94,6 +105,9 @@ router.get("/dashboard/stats", getDashboardStats);
 // =====================================================
 // PROJECTS
 // =====================================================
+
+// Get All Projects
+router.get("/projects", getProjects);
 
 // Create Project
 router.post("/projects", createProject);
@@ -252,6 +266,16 @@ router.post(
   upload.single("image"),
   uploadImage
 );
+
+// =====================================================
+// RESUME UPLOAD & INFO
+// =====================================================
+
+router.get("/resume", getResumeInfo);
+router.post("/resume", uploadResume.single("resume"), uploadResumeFile);
+router.post("/upload/resume", uploadResume.single("resume"), uploadResumeFile);
+router.post("/resume/set-active", setActiveResume);
+router.delete("/resume/:id", deleteResume);
 
 // =====================================================
 // EXPORT ROUTER

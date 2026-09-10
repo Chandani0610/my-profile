@@ -102,11 +102,334 @@ const uploadImage = async (req, res, next) => {
     res.status(200).json({
       success: true,
       message: "File uploaded successfully",
+      url: fileUrl,
       data: {
         url: fileUrl,
         filename: req.file.filename,
         mimetype: req.file.mimetype,
         size: req.file.size,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ============================================================
+// RESUME UPLOAD & MANAGEMENT (ACTIVE + RECENT HISTORY)
+// ============================================================
+
+const resumeUploadDir = path.join(__dirname, "..", "uploads", "resume");
+const frontendPublicResumeDir = path.join(__dirname, "..", "..", "..", "portfolio", "public", "uploads", "resume");
+
+if (!fs.existsSync(resumeUploadDir)) {
+  fs.mkdirSync(resumeUploadDir, { recursive: true });
+}
+if (!fs.existsSync(frontendPublicResumeDir)) {
+  fs.mkdirSync(frontendPublicResumeDir, { recursive: true });
+}
+
+const resumeStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, resumeUploadDir);
+  },
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname) || ".pdf";
+    const cleanName = path.basename(file.originalname, ext).replace(/[^a-zA-Z0-9_-]/g, "_");
+    cb(null, `Resume_${cleanName}_${Date.now()}${ext}`);
+  },
+});
+
+const uploadResume = multer({
+  storage: resumeStorage,
+  limits: { fileSize: 15 * 1024 * 1024 },
+});
+
+// Helper to get history from portfolio_settings
+const getStoredHistory = async () => {
+  try {
+    const [rows] = await pool.query(
+      "SELECT setting_value FROM portfolio_settings WHERE setting_key = 'resume_history' LIMIT 1"
+    );
+    if (rows.length && rows[0].setting_value) {
+      return JSON.parse(rows[0].setting_value);
+    }
+  } catch (err) {
+    console.warn("Could not load resume_history:", err.message);
+  }
+  return [];
+};
+
+// Helper to save history to portfolio_settings
+const saveStoredHistory = async (history) => {
+  try {
+    await pool.query(
+      `INSERT INTO portfolio_settings (setting_key, setting_value)
+       VALUES ('resume_history', ?)
+       ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)`,
+      [JSON.stringify(history)]
+    );
+  } catch (err) {
+    console.warn("Could not save resume_history:", err.message);
+  }
+};
+
+const uploadResumeFile = async (req, res, next) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: "No resume file uploaded",
+      });
+    }
+
+    const publicResumePath = path.join(__dirname, "..", "..", "..", "portfolio", "public", "Chandani_Kumari_Resume.pdf");
+    const publicVersionCopy = path.join(frontendPublicResumeDir, req.file.filename);
+
+    // Copy to public version folder and main live resume
+    try {
+      fs.copyFileSync(req.file.path, publicVersionCopy);
+    } catch (copyErr) {
+      console.warn("Could not copy to frontend uploads/resume:", copyErr.message);
+    }
+
+    try {
+      fs.copyFileSync(req.file.path, publicResumePath);
+    } catch (copyErr) {
+      console.warn("Could not copy to portfolio/public:", copyErr.message);
+    }
+
+    const originalName = req.file.originalname;
+    const fileSize = req.file.size;
+    const uploadTime = new Date().toISOString();
+    const newId = "res_" + Date.now();
+    const storedFilename = req.file.filename;
+
+    const newEntry = {
+      id: newId,
+      filename: storedFilename,
+      originalName: originalName,
+      size: fileSize,
+      url: `/uploads/resume/${storedFilename}`,
+      publicUrl: "/Chandani_Kumari_Resume.pdf",
+      uploadedAt: uploadTime,
+      isActive: true,
+    };
+
+    // Load existing history and mark previous items as inactive
+    const history = await getStoredHistory();
+    const updatedHistory = [
+      newEntry,
+      ...history.map((item) => ({ ...item, isActive: false })),
+    ].slice(0, 25); // retain last 25 resumes
+
+    await saveStoredHistory(updatedHistory);
+
+    // Also update current active resume settings
+    await pool.query(
+      `INSERT INTO portfolio_settings (setting_key, setting_value)
+       VALUES ('resume_url', ?), ('resume_name', ?), ('resume_size', ?), ('resume_updated_at', ?)
+       ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value);`,
+      ["/Chandani_Kumari_Resume.pdf", originalName, String(fileSize), uploadTime]
+    );
+
+    res.status(200).json({
+      success: true,
+      message: "Resume updated and published successfully! All download links updated.",
+      data: {
+        active: newEntry,
+        recent: updatedHistory,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const getResumeInfo = async (req, res, next) => {
+  try {
+    const [rows] = await pool.query(`
+      SELECT setting_key, setting_value, updated_at
+      FROM portfolio_settings
+      WHERE setting_key IN ('resume_url', 'resume_name', 'resume_size', 'resume_updated_at', 'resume_history')
+    `);
+
+    const info = {};
+    rows.forEach((r) => {
+      info[r.setting_key] = r.setting_value;
+    });
+
+    let history = [];
+    if (info.resume_history) {
+      try {
+        history = JSON.parse(info.resume_history);
+      } catch {
+        history = [];
+      }
+    }
+
+    const publicResumePath = path.join(__dirname, "..", "..", "..", "portfolio", "public", "Chandani_Kumari_Resume.pdf");
+    let fileExists = false;
+    let size = Number(info.resume_size) || 245000;
+    let updatedAt = info.resume_updated_at || new Date().toISOString();
+
+    if (fs.existsSync(publicResumePath)) {
+      fileExists = true;
+      const stats = fs.statSync(publicResumePath);
+      if (!info.resume_size) size = stats.size;
+      if (!info.resume_updated_at) updatedAt = stats.mtime;
+    }
+
+    const activeResume = {
+      id: "active",
+      url: info.resume_url || "/Chandani_Kumari_Resume.pdf",
+      filename: info.resume_name || "Chandani_Kumari_Resume.pdf",
+      originalName: info.resume_name || "Chandani_Kumari_Resume.pdf",
+      size,
+      updatedAt,
+      uploadedAt: updatedAt,
+      exists: fileExists,
+      isActive: true,
+    };
+
+    // If history is empty, seed with current active resume
+    if (history.length === 0) {
+      history = [activeResume];
+      await saveStoredHistory(history);
+    }
+
+    res.status(200).json({
+      success: true,
+      data: {
+        active: activeResume,
+        recent: history,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const setActiveResume = async (req, res, next) => {
+  try {
+    const { id } = req.body;
+    if (!id) {
+      return res.status(400).json({
+        success: false,
+        message: "Resume ID is required",
+      });
+    }
+
+    const history = await getStoredHistory();
+    const target = history.find((h) => h.id === id);
+
+    if (!target) {
+      return res.status(404).json({
+        success: false,
+        message: "Resume version not found in history",
+      });
+    }
+
+    // Attempt to copy target file to public Chandani_Kumari_Resume.pdf
+    const sourceInBackend = path.join(resumeUploadDir, target.filename);
+    const sourceInPublic = path.join(frontendPublicResumeDir, target.filename);
+    const destination = path.join(__dirname, "..", "..", "..", "portfolio", "public", "Chandani_Kumari_Resume.pdf");
+
+    let copied = false;
+    if (fs.existsSync(sourceInBackend)) {
+      fs.copyFileSync(sourceInBackend, destination);
+      copied = true;
+    } else if (fs.existsSync(sourceInPublic)) {
+      fs.copyFileSync(sourceInPublic, destination);
+      copied = true;
+    }
+
+    const updatedTime = new Date().toISOString();
+    const updatedHistory = history.map((item) => ({
+      ...item,
+      isActive: item.id === id,
+    }));
+
+    await saveStoredHistory(updatedHistory);
+
+    await pool.query(
+      `INSERT INTO portfolio_settings (setting_key, setting_value)
+       VALUES ('resume_url', ?), ('resume_name', ?), ('resume_size', ?), ('resume_updated_at', ?)
+       ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value);`,
+      ["/Chandani_Kumari_Resume.pdf", target.originalName || target.filename, String(target.size || 0), updatedTime]
+    );
+
+    const activeResume = {
+      ...target,
+      url: "/Chandani_Kumari_Resume.pdf",
+      isActive: true,
+      updatedAt: updatedTime,
+    };
+
+    res.status(200).json({
+      success: true,
+      message: `"${target.originalName || target.filename}" is now the active live resume!`,
+      data: {
+        active: activeResume,
+        recent: updatedHistory,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const deleteResume = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    if (!id) {
+      return res.status(400).json({
+        success: false,
+        message: "Resume ID is required",
+      });
+    }
+
+    const history = await getStoredHistory();
+    const target = history.find((h) => h.id === id);
+
+    if (!target) {
+      return res.status(404).json({
+        success: false,
+        message: "Resume version not found",
+      });
+    }
+
+    if (target.isActive) {
+      return res.status(400).json({
+        success: false,
+        message: "Cannot delete the currently active resume. Please activate a different version first.",
+      });
+    }
+
+    // Delete file if exists
+    if (target.filename) {
+      const backendFile = path.join(resumeUploadDir, target.filename);
+      const publicFile = path.join(frontendPublicResumeDir, target.filename);
+      try {
+        if (fs.existsSync(backendFile)) fs.unlinkSync(backendFile);
+      } catch (err) {
+        console.warn("Could not delete backend resume file:", err.message);
+      }
+      try {
+        if (fs.existsSync(publicFile)) fs.unlinkSync(publicFile);
+      } catch (err) {
+        console.warn("Could not delete public resume file:", err.message);
+      }
+    }
+
+    const updatedHistory = history.filter((h) => h.id !== id);
+    await saveStoredHistory(updatedHistory);
+
+    res.status(200).json({
+      success: true,
+      message: "Resume version deleted successfully",
+      data: {
+        recent: updatedHistory,
       },
     });
   } catch (error) {
@@ -248,6 +571,7 @@ const loginAdmin = async (req, res, next) => {
     res.json({
       success: true,
       message: "Login successful",
+      token: sessionToken,
       admin: {
         id: admin.id,
         name: admin.name,
@@ -329,6 +653,22 @@ const getDashboardStats = async (req, res, next) => {
 // PROJECTS
 // ============================================================
 
+// GET ALL PROJECTS
+const getProjects = async (req, res, next) => {
+  try {
+    const [rows] = await pool.query(
+      "SELECT * FROM projects ORDER BY id DESC"
+    );
+    res.status(200).json({
+      success: true,
+      count: rows.length,
+      data: rows,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 // CREATE PROJECT
 const createProject = async (req, res, next) => {
   try {
@@ -339,6 +679,7 @@ const createProject = async (req, res, next) => {
       description,
       github,
       demo,
+      image,
     } = req.body;
 
     if (!title || !title.trim()) {
@@ -350,8 +691,8 @@ const createProject = async (req, res, next) => {
 
     const [result] = await pool.query(
       `INSERT INTO projects
-       (title, icon, tech, description, github, demo)
-       VALUES (?, ?, ?, ?, ?, ?)`,
+       (title, icon, tech, description, github, demo, image)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
       [
         title.trim(),
         icon || "",
@@ -359,6 +700,7 @@ const createProject = async (req, res, next) => {
         description || "",
         github || "#",
         demo || "#",
+        image || null,
       ]
     );
 
@@ -389,6 +731,7 @@ const updateProject = async (req, res, next) => {
       description,
       github,
       demo,
+      image,
     } = req.body;
 
     if (!title || !title.trim()) {
@@ -405,7 +748,8 @@ const updateProject = async (req, res, next) => {
            tech = ?,
            description = ?,
            github = ?,
-           demo = ?
+           demo = ?,
+           image = ?
        WHERE id = ?`,
       [
         title.trim(),
@@ -414,6 +758,7 @@ const updateProject = async (req, res, next) => {
         description || "",
         github || "#",
         demo || "#",
+        image || null,
         id,
       ]
     );
@@ -1578,6 +1923,7 @@ module.exports = {
   getDashboardStats,
 
   // Projects
+  getProjects,
   createProject,
   updateProject,
   deleteProject,
@@ -1618,4 +1964,11 @@ module.exports = {
   // Upload
   upload,
   uploadImage,
+
+  // Resume
+  uploadResume,
+  uploadResumeFile,
+  getResumeInfo,
+  setActiveResume,
+  deleteResume,
 };

@@ -1,35 +1,27 @@
+// pages/Home.jsx
 import { useEffect, useState } from "react";
-
 import Header from "../components/Header";
-import Footer from "../components/Footer";
-import About from "../components/About";
-import Skills from "../components/Skills";
+import Hero from "../components/Hero";
+import AboutMe from "../components/AboutMe";
+import TechStack from "../components/TechStack";
 import Education from "../components/Education";
+import FeaturedProject from "../components/FeaturedProject";
+import Projects from "../components/Projects";
 import Certifications from "../components/Certifications";
 import Languages from "../components/Languages";
-import Projects from "../components/Projects";
-import Contact from "../components/Contact";
 import Hobbies from "../components/Hobbies";
+import LetsWorkTogether from "../components/LetsWorkTogether";
+import Footer from "../components/Footer";
 
 import { useTheme } from "../context/ThemeContext";
-import profileImage from "../assets/photo.png";
 import resumeData from "../data/resumeData";
-
 import API from "../services/api";
 
 export default function Home() {
-  const { themeColors } = useTheme();
-
-  // =========================================
-  // PORTFOLIO DATA
-  // =========================================
+  const { currentTheme, themeColors } = useTheme();
 
   const [portfolioData, setPortfolioData] = useState(resumeData);
   const [loading, setLoading] = useState(true);
-
-  // =========================================
-  // GET PORTFOLIO DATA
-  // =========================================
 
   useEffect(() => {
     const fetchPortfolio = async () => {
@@ -39,27 +31,25 @@ export default function Home() {
         if (response.data?.success) {
           const data = response.data.data;
           const pInfo = data.personalInfo || {};
-          setPortfolioData({
-            ...resumeData,
+          
+          setPortfolioData((prev) => ({
+            ...prev,
             ...data,
-            name: pInfo.name || resumeData.name,
-            role: pInfo.role || resumeData.role,
-            about: pInfo.about || resumeData.about,
+            name: pInfo.name || prev.name,
+            role: pInfo.role || prev.role,
+            about: pInfo.about || prev.about,
             contact: {
-              email: pInfo.email || resumeData.contact?.email,
-              linkedin: pInfo.linkedin || resumeData.contact?.linkedin,
-              location: pInfo.location || resumeData.contact?.location,
-              phone: pInfo.phone || resumeData.contact?.phone,
+              ...prev.contact,
+              email: pInfo.email || prev.contact?.email,
+              linkedin: pInfo.linkedin || prev.contact?.linkedin,
+              location: pInfo.location || prev.contact?.location,
+              phone: pInfo.phone || prev.contact?.phone,
+              github: "https://github.com/Chandani0610",
             },
-          });
+          }));
         }
       } catch (error) {
-        console.error(
-          "Failed to load portfolio data:",
-          error
-        );
-
-        // Keep resumeData as fallback
+        console.warn("Backend API unavailable, using local portfolio data:", error.message);
         setPortfolioData(resumeData);
       } finally {
         setLoading(false);
@@ -69,13 +59,8 @@ export default function Home() {
     fetchPortfolio();
   }, []);
 
-  // =========================================
-  // SCROLL
-  // =========================================
-
   const scrollToSection = (id) => {
     const section = document.getElementById(id);
-
     if (section) {
       section.scrollIntoView({
         behavior: "smooth",
@@ -83,297 +68,58 @@ export default function Home() {
     }
   };
 
-  // =========================================
-  // LOADING
-  // =========================================
-
   if (loading) {
     return (
-      <div
-        className="flex min-h-screen items-center justify-center"
-        style={{
-          backgroundColor: themeColors.background,
-          color: themeColors.text,
-        }}
-      >
+      <div className="flex min-h-screen items-center justify-center bg-slate-50">
         <div className="text-center">
-
-          <div
-            className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-4 border-t-transparent"
-            style={{
-              borderColor: `${themeColors.accent}40`,
-              borderTopColor: themeColors.accent,
-            }}
-          />
-
-          <p className="text-sm opacity-60">
+          <div className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-4 border-purple-200 border-t-purple-600" />
+          <p className="text-sm font-medium text-slate-500">
             Loading portfolio...
           </p>
-
         </div>
       </div>
     );
   }
 
-  // =========================================
-  // DESTRUCTURE DATA FOR CLEANER PROPS
-  // =========================================
-
-  const {
-    about,
-    skills,
-    projects,
-    education,
-    certifications,
-    languages,
-    hobbies,
-    contact,
-    name,
-    role,
-  } = portfolioData;
-
   return (
-    <>
+    <div data-theme={currentTheme} className="min-h-screen bg-[#f8fafc] text-slate-900 selection:bg-purple-500 selection:text-white">
+      {/* Header / Navbar */}
       <Header />
 
-      <main
-        className="min-h-screen"
-        style={{
-          backgroundColor: themeColors.background,
-          color: themeColors.text,
-        }}
-      >
+      <main className="flex flex-col gap-2 pb-4">
+        {/* 1. Hero Section */}
+        <Hero data={portfolioData} scrollToSection={scrollToSection} />
 
-        {/* =========================================
-            HERO
-        ========================================= */}
+        {/* 2. About Me & My Approach */}
+        <AboutMe data={portfolioData} />
 
-        <section
-          id="home"
-          className="relative px-4 py-6 sm:px-6 lg:px-8"
-          style={{
-            backgroundColor: themeColors.background,
-          }}
-        >
+        {/* 3. TECH STACK - Placed ON TOP OF THE EDUCATION SECTION */}
+        <TechStack skills={portfolioData.skills} />
 
-          <div
-            className="relative mx-auto min-h-[78vh] max-w-[1480px] overflow-hidden rounded-3xl"
-            style={{
-              backgroundColor: themeColors.primary,
-              background: themeColors.heroBg || themeColors.primary,
-              boxShadow: `0 15px 45px ${themeColors.shadow}`,
-            }}
-          >
+        {/* 4. EDUCATION - Placed ON TOP OF THE PROJECT SECTION */}
+        <Education education={portfolioData.education} />
 
-            <div className="relative z-10 flex min-h-[78vh] flex-col items-center lg:flex-row">
+        {/* 4. Featured Project: KahaniLand */}
+        <FeaturedProject project={portfolioData.featuredProject} />
 
-              {/* =========================================
-                  LEFT CONTENT
-              ========================================= */}
+        {/* 5. Other Projects / My Works */}
+        <Projects projects={portfolioData.projects} />
 
-              <div className="relative z-20 flex w-full items-center px-8 py-10 sm:px-10 lg:w-[52%] lg:px-14 lg:py-10">
+        {/* 6. Certifications Section - Placed right below Projects */}
+        <Certifications certifications={portfolioData.certifications} />
 
-                <div className="w-full max-w-[700px]">
+        {/* 7. LANGUAGES - Placed BELOW CERTIFICATIONS PAGE */}
+        <Languages languages={portfolioData.languages} />
 
-                  <div className="mb-4 text-[10px] font-semibold tracking-[3px] text-white/60">
-                    WELCOME TO MY PORTFOLIO
-                  </div>
+        {/* 8. HOBBIES & INTERESTS - Placed BELOW LANGUAGES */}
+        <Hobbies hobbies={portfolioData.hobbies} />
 
-                  <h1 className="m-0 max-w-[700px] text-4xl font-bold leading-[1.02] tracking-[-2px] text-white sm:text-5xl lg:text-[52px] xl:text-[64px]">
-
-                    Hi, I'm{" "}
-
-                    <span className="text-white">
-                      {name?.split(" ")[0] ||
-                        "Chandani"}
-                    </span>
-
-                    <br />
-
-                    <span className="text-white">
-                      {role ||
-                        "Frontend Developer"}
-                    </span>
-
-                  </h1>
-
-                  <p className="mt-5 max-w-[600px] text-sm leading-relaxed text-white/70 sm:text-base">
-                    {about ||
-                      "Computer Science Graduate with hands-on experience in React.js, Node.js, Express.js, MySQL, and JavaScript."}
-                  </p>
-
-
-                  {/* =========================================
-                      BUTTONS
-                  ========================================= */}
-
-                  <div className="mt-7 flex flex-wrap items-center gap-4">
-
-                    <button
-                      onClick={() =>
-                        scrollToSection("contact")
-                      }
-                      className="min-w-[140px] rounded-full px-6 py-3 text-sm font-semibold text-white transition-all duration-300 hover:-translate-y-1"
-                      style={{
-                        backgroundColor:
-                          themeColors.accent,
-                        boxShadow: `0 8px 20px ${themeColors.accent}40`,
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor =
-                          themeColors.accentDark;
-
-                        e.currentTarget.style.boxShadow =
-                          `0 12px 30px ${themeColors.accent}50`;
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor =
-                          themeColors.accent;
-
-                        e.currentTarget.style.boxShadow =
-                          `0 8px 20px ${themeColors.accent}40`;
-                      }}
-                    >
-                      CONTACT ME
-                    </button>
-
-
-                    <button
-                      onClick={() =>
-                        scrollToSection("projects")
-                      }
-                      className="min-w-[140px] rounded-full border-2 border-white/30 bg-transparent px-6 py-3 text-sm font-semibold text-white transition-all duration-300 hover:border-white hover:bg-white/10"
-                    >
-                      VIEW PROJECTS
-                    </button>
-
-                  </div>
-
-                </div>
-
-              </div>
-
-
-              {/* =========================================
-                  PROFILE IMAGE
-              ========================================= */}
-
-              <div className="relative flex w-full items-center justify-center lg:min-h-[500px] lg:w-[48%]">
-
-                <div className="relative z-10 mt-6 flex items-center justify-center lg:mt-0">
-
-                  <img
-                    src={profileImage}
-                    alt={
-                      name ||
-                      "Chandani Kumari"
-                    }
-                    className="h-auto max-h-[400px] w-auto max-w-full object-contain sm:max-h-[450px] lg:max-h-[500px] xl:max-h-[550px]"
-                  />
-
-                </div>
-
-
-                {/* =========================================
-                    PROJECT COUNT
-                ========================================= */}
-
-                <div className="absolute right-4 top-[180px] z-20 w-[140px] rounded-2xl border border-white/25 bg-white/10 p-4 text-white backdrop-blur-[20px] sm:right-6">
-
-                  <h3 className="m-0 mb-1 text-2xl font-bold text-white/90">
-                    {projects?.length || 0}
-                  </h3>
-
-                  <p className="m-0 text-[9px] leading-relaxed text-white/70">
-                    Projects Completed
-                  </p>
-
-                </div>
-
-              </div>
-
-            </div>
-
-
-            {/* =========================================
-                TECHNOLOGIES
-            ========================================= */}
-
-            <div
-              className="flex w-full flex-wrap items-center justify-around gap-4 border-t border-white/10 px-6 py-5"
-              style={{
-                backgroundColor:
-                  `${themeColors.primary}40`,
-              }}
-            >
-
-              <span className="text-[15px] font-bold text-white opacity-90 sm:text-[18px] md:text-[20px]">
-                ✦ REACT
-              </span>
-
-              <span className="text-[15px] font-bold text-white opacity-90 sm:text-[18px] md:text-[20px]">
-                ✦ TAILWIND
-              </span>
-
-              <span className="text-[15px] font-bold text-white opacity-90 sm:text-[18px] md:text-[20px]">
-                ✦ NODE.JS
-              </span>
-
-              <span className="text-[15px] font-bold text-white opacity-90 sm:text-[18px] md:text-[20px]">
-                ✦ EXPRESS
-              </span>
-
-              <span className="text-[15px] font-bold text-white opacity-90 sm:text-[18px] md:text-[20px]">
-                ✦ MYSQL
-              </span>
-
-            </div>
-
-          </div>
-
-        </section>
-
-
-        {/* =========================================
-            PORTFOLIO SECTIONS - WITH PROPS
-        ========================================= */}
-
-        <About
-          about={about}
-          skills={skills}
-        />
-
-        <Skills
-          skills={skills}
-        />
-
-        <Projects
-          projects={projects}
-        />
-
-        <Education
-          education={education}
-        />
-
-        <Certifications
-          certifications={certifications}
-        />
-
-        <Languages
-          languages={languages}
-        />
-
-        <Hobbies
-          hobbies={hobbies}
-        />
-
-        <Contact
-          contact={contact}
-        />
-
+        {/* 9. Let's Work Together - Placed ON TOP OF THE FOOTER */}
+        <LetsWorkTogether contact={portfolioData.contact} />
       </main>
 
-      <Footer />
-    </>
+      {/* Footer */}
+      <Footer onGetInTouch={() => scrollToSection("contact")} />
+    </div>
   );
 }

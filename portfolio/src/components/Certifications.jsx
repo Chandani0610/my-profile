@@ -1,517 +1,387 @@
-import { useTheme } from "../context/ThemeContext";
-import { useEffect, useState } from "react";
-import API, { getImageUrl } from "../services/api";
+// components/Certifications.jsx
+import { useState, useMemo } from "react";
+import { 
+  Award, 
+  ExternalLink, 
+  Search, 
+  CheckCircle2, 
+  Copy, 
+  Check, 
+  X, 
+  Eye, 
+  Building2, 
+  Sparkles 
+} from "lucide-react";
+import resumeData from "../data/resumeData";
+import { getImageUrl } from "../services/api";
 
-export default function Certifications({ certifications: propCertifications }) {
-  const [certifications, setCertifications] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  
-  let themeColors;
+export default function Certifications({ certifications: initialCerts }) {
+  const [activeFilter, setActiveFilter] = useState("All");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCert, setSelectedCert] = useState(null);
+  const [copiedId, setCopiedId] = useState(null);
 
-  try {
-    const theme = useTheme();
-    themeColors = theme.themeColors;
-  } catch {
-    themeColors = {
-      primary: "#08bde0",
-      primaryDark: "#07a8c9",
-      primaryLight: "#e8f4f8",
-      accent: "#48e39a",
-      accentDark: "#32d789",
-      text: "#10243e",
-      textSecondary: "#7c8997",
-      border: "#e9eef2",
-      cardBg: "#ffffff",
-      cardBorder: "#e7edf1",
-      background: "#f8fafb",
-      sectionBg: "#ffffff",
-      shadow: "rgba(16,36,62,0.08)",
-      shadowHover: "rgba(16,36,62,0.12)",
-      gradient: "linear-gradient(135deg, #08bde0, #07a8c9)",
-    };
-  }
+  const fallbackCerts = resumeData.certifications || [];
+  const certs = (initialCerts && initialCerts.length > 0) ? initialCerts : fallbackCerts;
 
-  // Fetch certifications if not provided as prop
-  useEffect(() => {
-    if (propCertifications) {
-      // Certifications supplied by props are consumed directly during render.
-      return;
-    }
+  // Normalizing certificates data
+  const normalizedCerts = useMemo(() => {
+    return certs.map((c, idx) => {
+      const title = c.title || c.certification_name || c.name || "Professional Certificate";
+      let issuer = c.issuer || "Accredited Organization";
+      // Clean up common variations
+      if (issuer.includes("HP LIFE")) issuer = "HP LIFE | HP Foundation";
+      if (issuer.includes("IES")) issuer = "IES UNIVERSITY";
+      if (issuer.includes("MIC")) issuer = "MIC INSTITUTE OF TECHNOLOGY";
 
-    // Otherwise fetch from API
-    const fetchCertifications = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        const response = await API.get("/portfolio");
-        
-        if (response.data.success) {
-          let certs = response.data.data.certifications || [];
-          
-          // Handle both old (string array) and new (object array) formats
-          if (Array.isArray(certs)) {
-            // Filter out null or undefined values
-            certs = certs.filter(cert => cert != null);
-            
-            if (certs.length > 0 && typeof certs[0] === 'string') {
-              // Convert string array to object array with proper structure
-              certs = certs.map((name, index) => ({
-                id: index + 1,
-                name: name || "Untitled Certification",
-                issuer: "Unknown Issuer",
-                credential: "",
-                url: "",
-                image: "",
-                description: ""
-              }));
-            }
-            setCertifications(certs);
-          } else {
-            setCertifications([]);
-          }
-        } else {
-          setCertifications([]);
-        }
-      } catch (error) {
-        console.error("Error fetching certifications:", error);
-        setError("Failed to load certifications");
-        setCertifications([]);
-      } finally {
-        setLoading(false);
+      // Fallback images based on title/issuer if image is null
+      let image = c.image;
+      if (!image) {
+        const match = fallbackCerts.find(f => 
+          (f.title && title && f.title.toLowerCase() === title.toLowerCase()) ||
+          (f.name && title && f.name.toLowerCase() === title.toLowerCase())
+        );
+        image = match ? match.image : null;
       }
-    };
 
-    fetchCertifications();
-  }, [propCertifications]);
+      // Credential ID
+      let credential = c.credential || null;
+      if (!credential && title.includes("Problem Solving (Basic)")) {
+        credential = "ID: FBCED9F0E3A3";
+      }
 
-  // Fallback data if no certifications are available
-  const fallbackCertifications = [
-    { id: 1, name: "AWS Certified Developer - Associate", issuer: "Amazon Web Services" },
-    { id: 2, name: "NPTEL - Programming in Java", issuer: "NPTEL" },
-    { id: 3, name: "NPTEL - Data Structures and Algorithms", issuer: "NPTEL" },
-    { id: 4, name: "HackerRank - Problem Solving (Intermediate)", issuer: "HackerRank" },
-    { id: 5, name: "HackerRank - SQL (Intermediate)", issuer: "HackerRank" },
-    { id: 6, name: "React.js Certification - Meta", issuer: "Meta" },
-  ];
+      return {
+        id: c.id || idx + 1,
+        title,
+        issuer,
+        credential,
+        image,
+        link: c.link || c.url || null
+      };
+    });
+  }, [certs, fallbackCerts]);
 
-  // Get certification list with safe fallback
-  const getCertList = () => {
-    if (loading) return [];
-    if (error) return fallbackCertifications;
-    
-    // Ensure we have an array and filter out null values
-    const sourceCertifications = propCertifications ?? certifications;
-    const safeCerts = Array.isArray(sourceCertifications) ? sourceCertifications : [];
-    const filteredCerts = safeCerts.filter(cert => cert != null);
-    
-    if (filteredCerts.length === 0) {
-      return fallbackCertifications;
-    }
-    
-    return filteredCerts;
+  // Extract unique issuers for filter pills
+  const issuerList = useMemo(() => {
+    const counts = {};
+    normalizedCerts.forEach(c => {
+      counts[c.issuer] = (counts[c.issuer] || 0) + 1;
+    });
+
+    const issuers = Object.keys(counts).sort((a, b) => counts[b] - counts[a]);
+    return [
+      { name: "All", count: normalizedCerts.length },
+      ...issuers.map(name => ({ name, count: counts[name] }))
+    ];
+  }, [normalizedCerts]);
+
+  // Filtered list based on activeFilter and searchQuery
+  const filteredCerts = useMemo(() => {
+    return normalizedCerts.filter(c => {
+      const matchesFilter = activeFilter === "All" || c.issuer.toLowerCase() === activeFilter.toLowerCase();
+      const q = searchQuery.toLowerCase().trim();
+      const matchesSearch = !q || 
+        c.title.toLowerCase().includes(q) || 
+        c.issuer.toLowerCase().includes(q) ||
+        (c.credential && c.credential.toLowerCase().includes(q));
+      
+      return matchesFilter && matchesSearch;
+    });
+  }, [normalizedCerts, activeFilter, searchQuery]);
+
+  const handleCopy = (id, text) => {
+    if (!text) return;
+    navigator.clipboard.writeText(text);
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 2000);
   };
-
-  const certList = getCertList();
-  const certIcons = ["🏅", "📜", "🎯", "⭐", "🏆", "📋"];
-
-  // Safe calculation of stats with null checks
-  const safeCertList = Array.isArray(certList) ? certList : [];
-  const totalCertifications = safeCertList.length;
-  
-  const nptelCount = safeCertList.filter(cert => {
-    if (!cert) return false;
-    const certName = typeof cert === 'string' ? cert : (cert.name || '');
-    return certName.includes("NPTEL");
-  }).length;
-  
-  const hackerRankCount = safeCertList.filter(cert => {
-    if (!cert) return false;
-    const certName = typeof cert === 'string' ? cert : (cert.name || '');
-    return certName.includes("HackerRank");
-  }).length;
-
-  // Render a single certification item
-  const renderCertificationItem = (cert, index) => {
-    if (!cert) return null;
-    
-    const iconIndex = index % certIcons.length;
-    const displayName = typeof cert === 'string' ? cert : (cert.name || "Untitled Certification");
-    const displayIssuer = typeof cert === 'string' ? "" : (cert.issuer || "");
-    const displayCredential = typeof cert === 'string' ? "" : (cert.credential || "");
-    const displayUrl = typeof cert === 'string' ? "" : (cert.url || "");
-    const displayImage = typeof cert === 'string' ? "" : (cert.image || "");
-    const displayDescription = typeof cert === 'string' ? "" : (cert.description || "");
-    const certId = cert.id || `cert-${index}`;
-
-    return (
-      <div
-        key={certId}
-        className="
-          group
-          rounded-xl
-          border
-          p-4
-          text-center
-          transition-all
-          duration-300
-          hover:-translate-y-1
-        "
-        style={{
-          borderColor: themeColors.border,
-          backgroundColor: themeColors.cardBg,
-          boxShadow: `0 6px 20px ${themeColors.shadow}`,
-        }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.boxShadow = `0 12px 30px ${themeColors.primary}20`;
-          e.currentTarget.style.borderColor = themeColors.primary;
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.boxShadow = `0 6px 20px ${themeColors.shadow}`;
-          e.currentTarget.style.borderColor = themeColors.border;
-        }}
-      >
-        <div className="flex flex-col items-center justify-center">
-          {/* Image or Icon */}
-          {displayImage ? (
-            <div className="mb-2.5">
-              <img
-                src={getImageUrl(displayImage)}
-                alt={displayName}
-                className="h-14 w-14 rounded-lg object-contain"
-                onError={(e) => {
-                  e.target.style.display = 'none';
-                  // Show fallback icon if image fails to load
-                  const parent = e.target.parentElement;
-                  const fallback = document.createElement('div');
-                  fallback.className = `
-                    flex h-14 w-14 items-center justify-center rounded-xl 
-                    text-2xl transition-all duration-300 group-hover:scale-105 
-                    group-hover:rotate-3
-                  `;
-                  fallback.style.backgroundColor = `${themeColors.primary}15`;
-                  fallback.style.border = `1px solid ${themeColors.primary}30`;
-                  fallback.style.color = themeColors.primary;
-                  fallback.textContent = certIcons[iconIndex];
-                  if (parent) {
-                    parent.appendChild(fallback);
-                  }
-                }}
-              />
-            </div>
-          ) : (
-            <div
-              className="
-                mb-2.5
-                flex
-                h-14
-                w-14
-                items-center
-                justify-center
-                rounded-xl
-                text-2xl
-                transition-all
-                duration-300
-                group-hover:scale-105
-                group-hover:rotate-3
-              "
-              style={{
-                backgroundColor: `${themeColors.primary}15`,
-                border: `1px solid ${themeColors.primary}30`,
-                color: themeColors.primary,
-              }}
-            >
-              {certIcons[iconIndex]}
-            </div>
-          )}
-
-          {/* Certificate Name */}
-          <h3
-            className="
-              mb-1
-              text-sm
-              font-semibold
-              leading-relaxed
-              transition-colors
-              duration-300
-              sm:text-base
-            "
-            style={{ color: themeColors.text }}
-          >
-            {displayName}
-          </h3>
-
-          {/* Issuer */}
-          {displayIssuer && (
-            <p
-              className="mb-2 text-xs"
-              style={{ color: themeColors.textSecondary }}
-            >
-              {displayIssuer}
-            </p>
-          )}
-
-          {/* Credential ID */}
-          {displayCredential && (
-            <p
-              className="mb-2 text-[10px]"
-              style={{ color: themeColors.textSecondary }}
-            >
-              ID: {displayCredential}
-            </p>
-          )}
-
-          {/* Description */}
-          {displayDescription && (
-            <p
-              className="mb-2 text-xs"
-              style={{ color: themeColors.textSecondary }}
-            >
-              {displayDescription}
-            </p>
-          )}
-
-          {/* Verify Link */}
-          {displayUrl && (
-            <a
-              href={displayUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-xs transition-colors hover:opacity-80 mb-2 inline-block"
-              style={{ color: themeColors.primary }}
-            >
-              🔗 Verify Credential
-            </a>
-          )}
-
-          {/* Certified Badge */}
-          <div
-            className="
-              inline-flex
-              items-center
-              gap-1.5
-              rounded-full
-              px-3
-              py-1
-              text-[10px]
-              font-medium
-              transition-all
-              duration-300
-              group-hover:scale-105
-            "
-            style={{
-              backgroundColor: `${themeColors.primary}15`,
-              border: `1px solid ${themeColors.primary}30`,
-              color: themeColors.primary,
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = `${themeColors.primary}25`;
-              e.currentTarget.style.borderColor = themeColors.primary;
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = `${themeColors.primary}15`;
-              e.currentTarget.style.borderColor = `${themeColors.primary}30`;
-            }}
-          >
-            <span>✔</span>
-            Certified
-          </div>
-
-          {/* Decorative Line */}
-          <div
-            className="
-              mt-2
-              h-0.5
-              w-8
-              rounded-full
-              transition-all
-              duration-300
-              group-hover:w-16
-            "
-            style={{
-              backgroundColor: `${themeColors.primary}30`,
-            }}
-          />
-        </div>
-      </div>
-    );
-  };
-
-  // Render loading state
-  if (loading) {
-    return (
-      <section
-        id="certifications"
-        className="relative px-4 py-12 sm:px-6 lg:px-8 lg:py-16"
-        style={{ backgroundColor: themeColors.sectionBg }}
-      >
-        <div className="mx-auto max-w-6xl">
-          <div className="text-center py-12">
-            <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-t-transparent"
-              style={{
-                borderColor: `${themeColors.primary}40`,
-                borderTopColor: themeColors.primary,
-              }}
-            />
-            <p className="mt-4" style={{ color: themeColors.textSecondary }}>
-              Loading certifications...
-            </p>
-          </div>
-        </div>
-      </section>
-    );
-  }
 
   return (
-    <section
-      id="certifications"
-      className="relative px-4 py-12 sm:px-6 lg:px-8 lg:py-16"
-      style={{ backgroundColor: themeColors.sectionBg }}
-    >
-      <div className="mx-auto max-w-6xl">
+    <section id="certifications" className="relative w-full px-4 py-12 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-[1400px]">
+        
+        {/* Section Header */}
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
+          <div>
+            <div className="inline-flex items-center gap-2 rounded-full border border-purple-200 bg-purple-50 px-3.5 py-1 text-xs font-bold uppercase tracking-wider text-purple-700 mb-3">
+              <Sparkles className="h-3.5 w-3.5 text-purple-600" />
+              <span>Certifications & Achievements</span>
+              <span className="h-1.5 w-1.5 rounded-full bg-purple-600" />
+              <span>{normalizedCerts.length} Total</span>
+            </div>
+            
+            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900">
+              Verified Certifications & Licenses
+            </h2>
+            <p className="mt-1.5 text-sm text-slate-500 max-w-2xl">
+              Professional credentials, academic excellence awards, and technical certifications earned in Software Engineering, DBMS, Cloud Computing, and Problem Solving.
+            </p>
+          </div>
 
-        {/* Heading */}
-        <div className="mx-auto mb-8 max-w-[600px] text-center">
-          <p
-            className="text-xs uppercase tracking-[0.22em]"
-            style={{ color: themeColors.primary }}
-          >
-            Certifications
-          </p>
-
-          <h2
-            className="m-0 mt-1 text-2xl font-bold tracking-[-0.8px] sm:text-3xl"
-            style={{ color: themeColors.text }}
-          >
-            Professional Certifications
-          </h2>
-
-          <p
-            className="mx-auto mt-2 max-w-xl text-xs sm:text-sm"
-            style={{ color: themeColors.textSecondary }}
-          >
-            {error 
-              ? "Certifications that support my technical knowledge." 
-              : "Certifications that support my technical knowledge and professional development."
-            }
-          </p>
+          {/* Search Box */}
+          <div className="relative w-full md:w-80 shrink-0">
+            <Search className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <input
+              type="text"
+              placeholder="Search by title or issuer..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full rounded-2xl border border-slate-200 bg-white pl-10 pr-10 py-2.5 text-xs sm:text-sm text-slate-800 placeholder-slate-400 outline-none transition focus:border-purple-500 focus:ring-2 focus:ring-purple-100 shadow-xs"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery("")}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1"
+                aria-label="Clear search"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
         </div>
 
-        {/* Error State */}
-        {error && (
-          <div className="text-center py-8 mb-6 rounded-xl border border-red-400/20 bg-red-400/10">
-            <p className="text-red-400">{error}</p>
-            <p className="text-sm mt-2" style={{ color: themeColors.textSecondary }}>
-              Showing fallback certifications.
+        {/* Filter Pills */}
+        <div className="flex items-center gap-2 overflow-x-auto pb-3 pt-1 scrollbar-none mb-6">
+          {issuerList.map((item) => {
+            const isActive = activeFilter === item.name;
+            return (
+              <button
+                key={item.name}
+                onClick={() => setActiveFilter(item.name)}
+                className={`flex shrink-0 items-center gap-1.5 rounded-full px-4 py-1.5 text-xs font-medium transition-all duration-200 ${
+                  isActive
+                    ? "bg-purple-700 text-white shadow-md shadow-purple-600/25 font-semibold"
+                    : "border border-slate-200 bg-white text-slate-600 hover:border-purple-200 hover:bg-purple-50/50 hover:text-purple-700"
+                }`}
+              >
+                <span>{item.name}</span>
+                <span className={`rounded-full px-1.5 py-0.2 text-[10px] font-bold ${
+                  isActive ? "bg-white/20 text-white" : "bg-slate-100 text-slate-500"
+                }`}>
+                  {item.count}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Certifications Grid */}
+        {filteredCerts.length === 0 ? (
+          <div className="rounded-3xl border border-slate-200/80 bg-white p-12 text-center shadow-xs">
+            <Award className="mx-auto h-12 w-12 text-slate-300 mb-3" />
+            <h3 className="text-base font-bold text-slate-800">No certifications found</h3>
+            <p className="mt-1 text-xs text-slate-500">
+              No matching credentials for "{searchQuery}" in {activeFilter}
             </p>
+            <button
+              onClick={() => { setActiveFilter("All"); setSearchQuery(""); }}
+              className="mt-4 inline-flex items-center gap-1 rounded-full bg-purple-100 px-4 py-1.5 text-xs font-semibold text-purple-700 hover:bg-purple-200 transition"
+            >
+              Reset Filters
+            </button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {filteredCerts.map((cert) => (
+              <div
+                key={cert.id}
+                className="group flex flex-col justify-between overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-xs transition-all duration-300 hover:-translate-y-1 hover:border-purple-300 hover:shadow-md hover:shadow-purple-500/10"
+              >
+                <div>
+                  {/* Certificate Image Preview / Thumbnail */}
+                  <div 
+                    onClick={() => setSelectedCert(cert)}
+                    className="relative aspect-[16/10] w-full cursor-pointer overflow-hidden bg-slate-100 border-b border-slate-100 flex items-center justify-center"
+                  >
+                    {cert.image ? (
+                      <img
+                        src={getImageUrl(cert.image)}
+                        alt={cert.title}
+                        className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+                        onError={(e) => {
+                          e.target.onerror = null;
+                          e.target.style.display = "none";
+                          e.target.parentElement.classList.add("bg-gradient-to-br", "from-purple-100", "to-indigo-50");
+                        }}
+                      />
+                    ) : (
+                      <div className="flex flex-col items-center justify-center text-purple-400">
+                        <Award className="h-12 w-12 stroke-[1.5]" />
+                        <span className="text-[10px] font-semibold text-purple-600 mt-1">Verified Credential</span>
+                      </div>
+                    )}
+
+                    {/* Overlay badge with Eye icon on hover */}
+                    <div className="absolute inset-0 flex items-center justify-center bg-slate-950/40 opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+                      <span className="flex items-center gap-1.5 rounded-full bg-white px-3.5 py-1.5 text-xs font-semibold text-slate-900 shadow-lg">
+                        <Eye className="h-3.5 w-3.5 text-purple-600" />
+                        <span>Inspect Certificate</span>
+                      </span>
+                    </div>
+
+                    {/* Verified ribbon */}
+                    <div className="absolute top-2.5 left-2.5 rounded-full bg-white/90 px-2 py-0.5 text-[10px] font-bold text-emerald-700 shadow-xs backdrop-blur-xs flex items-center gap-1">
+                      <CheckCircle2 className="h-3 w-3 text-emerald-600" />
+                      <span>Verified</span>
+                    </div>
+                  </div>
+
+                  {/* Body Content */}
+                  <div className="p-4 sm:p-5">
+                    {/* Issuer Tag */}
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-purple-700">
+                      <Building2 className="h-3.5 w-3.5 shrink-0" />
+                      <span className="truncate">{cert.issuer}</span>
+                    </div>
+
+                    {/* Certificate Title */}
+                    <h3 
+                      onClick={() => setSelectedCert(cert)}
+                      className="mt-1.5 text-sm sm:text-base font-bold text-slate-900 line-clamp-2 leading-snug cursor-pointer transition hover:text-purple-700"
+                    >
+                      {cert.title}
+                    </h3>
+
+                    {/* Credential ID row with copy */}
+                    {cert.credential && (
+                      <div className="mt-3 flex items-center justify-between rounded-xl bg-slate-50 px-2.5 py-1.5 text-[11px] font-mono text-slate-600 border border-slate-100">
+                        <span className="truncate">{cert.credential}</span>
+                        <button
+                          onClick={() => handleCopy(cert.id, cert.credential)}
+                          className="ml-2 shrink-0 text-purple-600 hover:text-purple-800 transition"
+                          title="Copy Credential ID"
+                        >
+                          {copiedId === cert.id ? (
+                            <span className="flex items-center gap-0.5 text-emerald-600 font-bold text-[10px]">
+                              <Check className="h-3 w-3" />
+                              <span>Copied</span>
+                            </span>
+                          ) : (
+                            <Copy className="h-3.5 w-3.5" />
+                          )}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Card Action Footer */}
+                <div className="border-t border-slate-100 bg-slate-50/60 px-4 py-3 sm:px-5 flex items-center justify-between">
+                  <button
+                    onClick={() => setSelectedCert(cert)}
+                    className="inline-flex items-center gap-1.5 text-xs font-bold text-purple-700 transition group-hover:text-purple-900"
+                  >
+                    <span>View Certificate</span>
+                    <Eye className="h-3.5 w-3.5 transition-transform group-hover:scale-110" />
+                  </button>
+
+                  {cert.image && (
+                    <a
+                      href={getImageUrl(cert.image)}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-[11px] font-semibold text-slate-500 hover:text-purple-700 flex items-center gap-1"
+                      title="Open full size image"
+                    >
+                      <span>Full View</span>
+                      <ExternalLink className="h-3 w-3" />
+                    </a>
+                  )}
+                </div>
+              </div>
+            ))}
           </div>
         )}
 
-        {/* Certification Cards */}
-        <div className="mx-auto grid max-w-4xl grid-cols-1 gap-4 md:grid-cols-2">
-          {safeCertList.length > 0 ? (
-            safeCertList.map((cert, idx) => renderCertificationItem(cert, idx))
-          ) : (
-            <div 
-              className="col-span-1 md:col-span-2 text-center py-8 rounded-xl border"
-              style={{
-                borderColor: themeColors.border,
-                backgroundColor: themeColors.cardBg,
-              }}
-            >
-              <p style={{ color: themeColors.textSecondary }}>
-                No certifications available.
-              </p>
-            </div>
-          )}
-        </div>
+      </div>
 
-        {/* Stats Section */}
-        <div className="mx-auto mt-7 max-w-3xl">
-          <div
-            className="
-              grid
-              grid-cols-2
-              gap-3
-              rounded-xl
-              border
-              p-4
-              text-center
-              md:grid-cols-4
-            "
-            style={{
-              borderColor: themeColors.border,
-              backgroundColor: `${themeColors.primary}05`,
-              boxShadow: `0 4px 15px ${themeColors.shadow}`,
-            }}
+      {/* ====================================================
+          FULL HIGH-RESOLUTION CERTIFICATE LIGHTBOX MODAL
+      ==================================================== */}
+      {selectedCert && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-4 backdrop-blur-md animate-in fade-in duration-200"
+          onClick={() => setSelectedCert(null)}
+        >
+          <div 
+            className="relative flex max-h-[94vh] w-full max-w-4xl flex-col rounded-3xl bg-white shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
           >
-            {/* Total */}
-            <div className="transition-all duration-300 hover:scale-105">
-              <p
-                className="text-xl font-bold"
-                style={{ color: themeColors.primary }}
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4 bg-white">
+              <div className="min-w-0 pr-4">
+                <div className="flex items-center gap-2">
+                  <span className="rounded-full bg-purple-100 px-2.5 py-0.5 text-[10px] font-bold text-purple-700 uppercase tracking-wider">
+                    {selectedCert.issuer}
+                  </span>
+                  <div className="flex items-center gap-1 text-[11px] font-semibold text-emerald-600">
+                    <CheckCircle2 className="h-3.5 w-3.5" />
+                    <span>Verified</span>
+                  </div>
+                </div>
+                <h3 className="mt-1 text-base sm:text-lg font-bold text-slate-900 truncate">
+                  {selectedCert.title}
+                </h3>
+              </div>
+              <button
+                onClick={() => setSelectedCert(null)}
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-slate-800 transition"
+                aria-label="Close dialog"
               >
-                {totalCertifications}
-              </p>
-              <p
-                className="mt-0.5 text-[10px]"
-                style={{ color: themeColors.textSecondary }}
-              >
-                Total Certifications
-              </p>
+                <X className="h-5 w-5" />
+              </button>
             </div>
 
-            {/* NPTEL */}
-            <div className="transition-all duration-300 hover:scale-105">
-              <p
-                className="text-xl font-bold"
-                style={{ color: themeColors.primary }}
-              >
-                {nptelCount}
-              </p>
-              <p
-                className="mt-0.5 text-[10px]"
-                style={{ color: themeColors.textSecondary }}
-              >
-                NPTEL Courses
-              </p>
+            {/* High-res Image Preview */}
+            <div className="flex-1 overflow-auto bg-[#0a0f1d] p-4 sm:p-6 flex items-center justify-center min-h-[350px]">
+              {selectedCert.image ? (
+                <img
+                  src={getImageUrl(selectedCert.image)}
+                  alt={selectedCert.title}
+                  className="max-h-[68vh] w-auto max-w-full rounded-xl object-contain shadow-2xl ring-1 ring-white/10"
+                />
+              ) : (
+                <div className="py-16 text-center text-slate-300">
+                  <Award className="mx-auto h-20 w-20 text-purple-400 mb-3" />
+                  <p className="text-base font-bold text-white">{selectedCert.title}</p>
+                  <p className="text-xs text-slate-400 mt-1">Issued by {selectedCert.issuer}</p>
+                </div>
+              )}
             </div>
 
-            {/* HackerRank */}
-            <div className="transition-all duration-300 hover:scale-105">
-              <p
-                className="text-xl font-bold"
-                style={{ color: themeColors.primary }}
-              >
-                {hackerRankCount}
-              </p>
-              <p
-                className="mt-0.5 text-[10px]"
-                style={{ color: themeColors.textSecondary }}
-              >
-                HackerRank
-              </p>
-            </div>
+            {/* Modal Footer */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-slate-100 px-6 py-3.5 bg-slate-50">
+              <div className="text-xs text-slate-500">
+                {selectedCert.credential ? (
+                  <span className="font-mono">Credential ID: <strong className="text-slate-800">{selectedCert.credential}</strong></span>
+                ) : (
+                  <span>Official Certificate Issued to <strong>Chandani Kumari</strong></span>
+                )}
+              </div>
 
-            {/* Active Period */}
-            <div className="transition-all duration-300 hover:scale-105">
-              <p
-                className="text-xl font-bold"
-                style={{ color: themeColors.primary }}
-              >
-                2024-{new Date().getFullYear()}
-              </p>
-              <p
-                className="mt-0.5 text-[10px]"
-                style={{ color: themeColors.textSecondary }}
-              >
-                Active Period
-              </p>
+              <div className="flex items-center gap-2">
+                {selectedCert.image && (
+                  <a
+                    href={getImageUrl(selectedCert.image)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1.5 rounded-full bg-purple-700 hover:bg-purple-800 text-white px-4 py-1.5 text-xs font-semibold shadow-sm transition"
+                  >
+                    <span>Open High-Res</span>
+                    <ExternalLink className="h-3.5 w-3.5" />
+                  </a>
+                )}
+                <button
+                  onClick={() => setSelectedCert(null)}
+                  className="rounded-full bg-slate-200 px-4 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-300 transition"
+                >
+                  Close
+                </button>
+              </div>
             </div>
           </div>
         </div>
-
-      </div>
+      )}
     </section>
   );
 }
