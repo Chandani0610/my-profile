@@ -25,11 +25,36 @@ const languageLevels = [
 
 // Common languages suggestions
 const languageSuggestions = [
-  "English", "Spanish", "French", "German", "Chinese", "Japanese",
+  "English", "Hindi", "Maithili", "Spanish", "French", "German", "Chinese", "Japanese",
   "Korean", "Russian", "Arabic", "Portuguese", "Italian", "Dutch",
-  "Hindi", "Bengali", "Urdu", "Tamil", "Telugu", "Marathi",
+  "Bengali", "Urdu", "Tamil", "Telugu", "Marathi",
   "Gujarati", "Kannada", "Malayalam", "Odia", "Punjabi", "Nepali"
 ];
+
+const defaultLanguageFlags = {
+  English: "🇬🇧",
+  Hindi: "🇮🇳",
+  Maithili: "🧡",
+  Spanish: "🇪🇸",
+  French: "🇫🇷",
+  German: "🇩🇪",
+  Chinese: "🇨🇳",
+  Japanese: "🇯🇵",
+  Korean: "🇰🇷",
+  Russian: "🇷🇺",
+  Arabic: "🇸🇦",
+  Portuguese: "🇵🇹",
+  Italian: "🇮🇹",
+  Dutch: "🇳🇱",
+  Bengali: "🇧🇩",
+  Urdu: "🇵🇰",
+  Tamil: "🇮🇳",
+  Telugu: "🇮🇳",
+  Marathi: "🇮🇳",
+  Gujarati: "🇮🇳",
+  Punjabi: "🇮🇳",
+  Nepali: "🇳🇵",
+};
 
 export default function AdminLanguages() {
   const navigate = useNavigate();
@@ -59,29 +84,31 @@ export default function AdminLanguages() {
     return themeColorSwatches[currentTheme] || themeColorSwatches.blue;
   };
 
-  // ✅ Updated useEffect with AbortController for cleanup
+  // ✅ Load languages using /admin/languages
+  const fetchLanguagesList = async (signal) => {
+    try {
+      const response = await API.get("/admin/languages", signal ? { signal } : undefined);
+      if (response.data?.success) {
+        const raw = response.data.data;
+        const list = Array.isArray(raw) ? raw : (raw?.languages || []);
+        setLanguages(list);
+      }
+    } catch (error) {
+      if (error.name !== 'AbortError') {
+        console.error("Failed to load languages:", error);
+        setMessage("❌ Failed to load languages.");
+      }
+    }
+  };
+
   useEffect(() => {
     const abortController = new AbortController();
 
     const loadLanguages = async () => {
-      try {
-        setLoading(true);
-        const response = await API.get("/portfolio", {
-          signal: abortController.signal
-        });
-
-        if (response.data.success) {
-          setLanguages(response.data.data.languages || []);
-        }
-      } catch (error) {
-        if (error.name !== 'AbortError') {
-          console.error("Failed to load languages:", error);
-          setMessage("❌ Failed to load languages.");
-        }
-      } finally {
-        if (!abortController.signal.aborted) {
-          setLoading(false);
-        }
+      setLoading(true);
+      await fetchLanguagesList(abortController.signal);
+      if (!abortController.signal.aborted) {
+        setLoading(false);
       }
     };
 
@@ -117,7 +144,7 @@ export default function AdminLanguages() {
     // Check for duplicate language
     const isDuplicate = languages.some(
       (lang) => 
-        lang.name.toLowerCase() === form.name.trim().toLowerCase() &&
+        (lang.name || lang.language_name || "").toLowerCase() === form.name.trim().toLowerCase() &&
         lang.id !== editingId
     );
 
@@ -130,11 +157,19 @@ export default function AdminLanguages() {
     setMessage("");
 
     try {
+      const payload = {
+        name: form.name.trim(),
+        language_name: form.name.trim(),
+        level: form.level.trim(),
+        proficiency_level: form.level.trim(),
+        flag: defaultLanguageFlags[form.name.trim()] || "🌐",
+      };
+
       if (editingId) {
-        await API.put(`/admin/languages/${editingId}`, form);
+        await API.put(`/admin/languages/${editingId}`, payload);
         setMessage("✅ Language updated successfully.");
       } else {
-        await API.post("/admin/languages", form);
+        await API.post("/admin/languages", payload);
         setMessage("✅ Language added successfully.");
       }
 
@@ -142,11 +177,8 @@ export default function AdminLanguages() {
       setEditingId(null);
       setShowSuggestions(false);
       
-      // Reload fresh data
-      const response = await API.get("/portfolio");
-      if (response.data.success) {
-        setLanguages(response.data.data.languages || []);
-      }
+      // Reload fresh data from /admin/languages
+      await fetchLanguagesList();
 
       // Auto-dismiss message after 3 seconds
       setTimeout(() => setMessage(""), 3000);
@@ -162,8 +194,8 @@ export default function AdminLanguages() {
   const editLanguage = (item) => {
     setEditingId(item.id);
     setForm({
-      name: item.name || "",
-      level: item.level || "",
+      name: item.name || item.language_name || "",
+      level: item.level || item.proficiency_level || "",
     });
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -182,10 +214,7 @@ export default function AdminLanguages() {
       setMessage("✅ Language deleted successfully.");
       
       // Reload fresh data
-      const response = await API.get("/portfolio");
-      if (response.data.success) {
-        setLanguages(response.data.data.languages || []);
-      }
+      await fetchLanguagesList();
 
       // Auto-dismiss message after 3 seconds
       setTimeout(() => setMessage(""), 3000);
@@ -211,7 +240,7 @@ export default function AdminLanguages() {
 
   // Sort languages alphabetically
   const sortedLanguages = [...languages].sort((a, b) => 
-    a.name.localeCompare(b.name)
+    (a.name || a.language_name || "").localeCompare(b.name || b.language_name || "")
   );
 
   // Get level badge color for white cards
@@ -506,9 +535,12 @@ export default function AdminLanguages() {
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
-                      <h3 className="text-lg font-semibold text-gray-900">{item.name}</h3>
-                      <span className={`mt-2 inline-block rounded-full px-3 py-1 text-xs font-medium ${getLevelColor(item.level)}`}>
-                        {item.level}
+                      <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                        <span className="text-xl">{item.flag || defaultLanguageFlags[item.name] || defaultLanguageFlags[item.language_name] || '🌐'}</span>
+                        <span>{item.name || item.language_name}</span>
+                      </h3>
+                      <span className={`mt-2 inline-block rounded-full px-3 py-1 text-xs font-medium ${getLevelColor(item.level || item.proficiency_level)}`}>
+                        {item.level || item.proficiency_level}
                       </span>
                     </div>
                     <div className="flex gap-2 opacity-0 transition-opacity group-hover:opacity-100">

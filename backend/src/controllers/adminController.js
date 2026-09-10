@@ -1010,6 +1010,31 @@ const deleteCertification = async (
 // LANGUAGES
 // ============================================================
 
+const defaultLanguageFlags = {
+  English: "🇬🇧",
+  Hindi: "🇮🇳",
+  Maithili: "🧡",
+  Spanish: "🇪🇸",
+  French: "🇫🇷",
+  German: "🇩🇪",
+  Chinese: "🇨🇳",
+  Japanese: "🇯🇵",
+  Korean: "🇰🇷",
+  Russian: "🇷🇺",
+  Arabic: "🇸🇦",
+  Portuguese: "🇵🇹",
+  Italian: "🇮🇹",
+  Dutch: "🇳🇱",
+  Bengali: "🇧🇩",
+  Urdu: "🇵🇰",
+  Tamil: "🇮🇳",
+  Telugu: "🇮🇳",
+  Marathi: "🇮🇳",
+  Gujarati: "🇮🇳",
+  Punjabi: "🇮🇳",
+  Nepali: "🇳🇵",
+};
+
 // GET LANGUAGES
 const getLanguages = async (
   req,
@@ -1018,7 +1043,12 @@ const getLanguages = async (
 ) => {
   try {
     const [languages] = await pool.query(
-      `SELECT *
+      `SELECT id,
+              name,
+              name AS language_name,
+              flag,
+              level,
+              level AS proficiency_level
        FROM languages
        ORDER BY id ASC`
     );
@@ -1039,33 +1069,41 @@ const createLanguage = async (
   next
 ) => {
   try {
-    const {
-      name,
-      flag,
-      level,
-    } = req.body;
+    const rawName = req.body.name || req.body.language_name;
+    const rawLevel = req.body.level || req.body.proficiency_level;
+    const rawFlag = req.body.flag;
 
-    if (!name || !name.trim()) {
+    if (!rawName || !rawName.trim()) {
       return res.status(400).json({
         success: false,
         message: "Language name is required",
       });
     }
 
+    const cleanName = rawName.trim();
+    const cleanLevel = (rawLevel || "Fluent").trim();
+    const cleanFlag = (rawFlag && rawFlag.trim()) || defaultLanguageFlags[cleanName] || "🌐";
+
     const [result] = await pool.query(
       `INSERT INTO languages
        (name, flag, level)
        VALUES (?, ?, ?)`,
       [
-        name.trim(),
-        flag || "",
-        level || "",
+        cleanName,
+        cleanFlag,
+        cleanLevel,
       ]
     );
 
     const [newLanguage] =
       await pool.query(
-        "SELECT * FROM languages WHERE id = ?",
+        `SELECT id,
+                name,
+                name AS language_name,
+                flag,
+                level,
+                level AS proficiency_level
+         FROM languages WHERE id = ?`,
         [result.insertId]
       );
 
@@ -1088,18 +1126,20 @@ const updateLanguage = async (
   try {
     const { id } = req.params;
 
-    const {
-      name,
-      flag,
-      level,
-    } = req.body;
+    const rawName = req.body.name || req.body.language_name;
+    const rawLevel = req.body.level || req.body.proficiency_level;
+    const rawFlag = req.body.flag;
 
-    if (!name || !name.trim()) {
+    if (!rawName || !rawName.trim()) {
       return res.status(400).json({
         success: false,
         message: "Language name is required",
       });
     }
+
+    const cleanName = rawName.trim();
+    const cleanLevel = (rawLevel || "Fluent").trim();
+    const cleanFlag = (rawFlag && rawFlag.trim()) || defaultLanguageFlags[cleanName] || "🌐";
 
     const [result] = await pool.query(
       `UPDATE languages
@@ -1108,9 +1148,9 @@ const updateLanguage = async (
            level = ?
        WHERE id = ?`,
       [
-        name.trim(),
-        flag || "",
-        level || "",
+        cleanName,
+        cleanFlag,
+        cleanLevel,
         id,
       ]
     );
@@ -1124,7 +1164,13 @@ const updateLanguage = async (
 
     const [updatedLanguage] =
       await pool.query(
-        "SELECT * FROM languages WHERE id = ?",
+        `SELECT id,
+                name,
+                name AS language_name,
+                flag,
+                level,
+                level AS proficiency_level
+         FROM languages WHERE id = ?`,
         [id]
       );
 
@@ -1180,7 +1226,10 @@ const getHobbies = async (
 ) => {
   try {
     const [hobbies] = await pool.query(
-      `SELECT *
+      `SELECT id,
+              hobby_name,
+              hobby_name AS name,
+              icon
        FROM hobbies
        ORDER BY id ASC`
     );
@@ -1201,30 +1250,33 @@ const createHobby = async (
   next
 ) => {
   try {
-    const {
-      hobby_name,
-    } = req.body;
+    const rawHobbyName = req.body.hobby_name || req.body.name;
+    const rawIcon = req.body.icon;
 
-    if (
-      !hobby_name ||
-      !hobby_name.trim()
-    ) {
+    if (!rawHobbyName || !rawHobbyName.trim()) {
       return res.status(400).json({
         success: false,
         message: "Hobby name is required",
       });
     }
 
+    const cleanHobbyName = rawHobbyName.trim();
+    const cleanIcon = (rawIcon && rawIcon.trim()) || "🎯";
+
     const [result] = await pool.query(
       `INSERT INTO hobbies
-       (hobby_name)
-       VALUES (?)`,
-      [hobby_name.trim()]
+       (hobby_name, icon)
+       VALUES (?, ?)`,
+      [cleanHobbyName, cleanIcon]
     );
 
     const [newHobby] =
       await pool.query(
-        "SELECT * FROM hobbies WHERE id = ?",
+        `SELECT id,
+                hobby_name,
+                hobby_name AS name,
+                icon
+         FROM hobbies WHERE id = ?`,
         [result.insertId]
       );
 
@@ -1247,26 +1299,27 @@ const updateHobby = async (
   try {
     const { id } = req.params;
 
-    const {
-      hobby_name,
-    } = req.body;
+    const rawHobbyName = req.body.hobby_name || req.body.name;
+    const rawIcon = req.body.icon;
 
-    if (
-      !hobby_name ||
-      !hobby_name.trim()
-    ) {
+    if (!rawHobbyName || !rawHobbyName.trim()) {
       return res.status(400).json({
         success: false,
         message: "Hobby name is required",
       });
     }
 
+    const cleanHobbyName = rawHobbyName.trim();
+    const cleanIcon = (rawIcon && rawIcon.trim()) || "🎯";
+
     const [result] = await pool.query(
       `UPDATE hobbies
-       SET hobby_name = ?
+       SET hobby_name = ?,
+           icon = ?
        WHERE id = ?`,
       [
-        hobby_name.trim(),
+        cleanHobbyName,
+        cleanIcon,
         id,
       ]
     );
@@ -1280,7 +1333,11 @@ const updateHobby = async (
 
     const [updatedHobby] =
       await pool.query(
-        "SELECT * FROM hobbies WHERE id = ?",
+        `SELECT id,
+                hobby_name,
+                hobby_name AS name,
+                icon
+         FROM hobbies WHERE id = ?`,
         [id]
       );
 

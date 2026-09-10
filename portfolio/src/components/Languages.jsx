@@ -37,8 +37,9 @@ export default function Languages({ languages }) {
   // Default flags for common languages if not provided
   const defaultFlags = {
     'English': '🇬🇧',
-    'Nepali': '🇳🇵',
     'Hindi': '🇮🇳',
+    'Maithili': '🧡',
+    'Nepali': '🇳🇵',
     'Spanish': '🇪🇸',
     'French': '🇫🇷',
     'German': '🇩🇪',
@@ -153,10 +154,12 @@ export default function Languages({ languages }) {
 
         <div className="mx-auto flex max-w-4xl flex-wrap justify-center gap-5">
           {languagesData.map((lang, idx) => {
-            const levelColor = getLevelColor(lang.level);
+            const langName = lang.name || lang.language_name || "";
+            const langLevel = lang.level || lang.proficiency_level || "Fluent";
+            const levelColor = getLevelColor(langLevel);
             // Use provided flag or get from default flags
-            const flag = lang.flag || defaultFlags[lang.name] || '🌐';
-            const levelScore = getLevelScore(lang.level);
+            const flag = lang.flag || defaultFlags[langName] || '🌐';
+            const levelScore = getLevelScore(langLevel);
             
             return (
               <div
@@ -208,7 +211,7 @@ export default function Languages({ languages }) {
                       onMouseEnter={(e) => e.target.style.color = levelColor.text}
                       onMouseLeave={(e) => e.target.style.color = themeColors.text}
                     >
-                      {lang.name}
+                      {langName}
                     </h3>
 
                     <div className="mt-1 flex items-center gap-2 flex-wrap">
@@ -216,7 +219,7 @@ export default function Languages({ languages }) {
                         className="text-xs font-medium"
                         style={{ color: levelColor.text }}
                       >
-                        {getLevelBadge(lang.level)}
+                        {getLevelBadge(langLevel)}
                       </span>
                       
                       {/* Level indicator dots */}

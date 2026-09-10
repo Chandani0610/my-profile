@@ -102,7 +102,12 @@ router.get("/", async (req, res, next) => {
     // -----------------------------------------------
 
     const [languageRows] = await pool.query(`
-      SELECT *
+      SELECT id,
+             name,
+             name AS language_name,
+             flag,
+             level,
+             level AS proficiency_level
       FROM languages
       ORDER BY id ASC
     `);
@@ -112,7 +117,10 @@ router.get("/", async (req, res, next) => {
     // -----------------------------------------------
 
     const [hobbyRows] = await pool.query(`
-      SELECT *
+      SELECT id,
+             hobby_name,
+             hobby_name AS name,
+             icon
       FROM hobbies
       ORDER BY id ASC
     `);
@@ -281,7 +289,12 @@ router.get(
   async (req, res, next) => {
     try {
       const [rows] = await pool.query(`
-        SELECT *
+        SELECT id,
+               name,
+               name AS language_name,
+               flag,
+               level,
+               level AS proficiency_level
         FROM languages
         ORDER BY id ASC
       `);
@@ -311,7 +324,10 @@ router.get(
   async (req, res, next) => {
     try {
       const [rows] = await pool.query(`
-        SELECT *
+        SELECT id,
+               hobby_name,
+               hobby_name AS name,
+               icon
         FROM hobbies
         ORDER BY id ASC
       `);

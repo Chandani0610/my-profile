@@ -47,46 +47,43 @@ export default function AdminHobbies() {
   };
 
   // ✅ Load hobbies with better error handling
+  // ✅ Load hobbies using /admin/hobbies
+  const fetchHobbiesList = async (signal) => {
+    try {
+      setError(null);
+      const response = await API.get("/admin/hobbies", signal ? { signal } : undefined);
+
+      if (response.data?.success) {
+        const raw = response.data.data;
+        const list = Array.isArray(raw) ? raw : (raw?.hobbies || []);
+        const normalized = list.map(item => ({
+          id: item.id,
+          name: item.hobby_name || item.name || "",
+          hobby_name: item.hobby_name || item.name || "",
+          icon: item.icon || "🎯",
+        })).filter(item => item.name);
+        setHobbies(normalized);
+      } else {
+        setError("Failed to load hobbies: API returned unsuccessful");
+        setMessage("❌ Failed to load hobbies.");
+      }
+    } catch (err) {
+      if (err.name !== 'AbortError') {
+        console.error("❌ Failed to load hobbies:", err);
+        setError(err.message);
+        setMessage("❌ Failed to load hobbies. Please check your connection.");
+      }
+    }
+  };
+
   useEffect(() => {
     const abortController = new AbortController();
 
     const loadHobbies = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        
-        console.log("🔄 Fetching hobbies...");
-        const response = await API.get("/portfolio", {
-          signal: abortController.signal
-        });
-
-        console.log("📦 Response:", response.data);
-
-        if (response.data.success) {
-          let hobbiesData = response.data.data?.hobbies || [];
-          hobbiesData = hobbiesData.filter(hobby => hobby && hobby.name);
-          setHobbies(hobbiesData);
-          console.log(`✅ Loaded ${hobbiesData.length} hobbies`);
-        } else {
-          setError("Failed to load hobbies: API returned unsuccessful");
-          setMessage("❌ Failed to load hobbies.");
-        }
-      } catch (error) {
-        if (error.name !== 'AbortError') {
-          console.error("❌ Failed to load hobbies:", error);
-          setError(error.message);
-          setMessage("❌ Failed to load hobbies. Please check your connection.");
-          
-          setHobbies([
-            { id: 1, name: "Photography", icon: "📷" },
-            { id: 2, name: "Reading", icon: "📚" },
-            { id: 3, name: "Traveling", icon: "✈️" },
-          ]);
-        }
-      } finally {
-        if (!abortController.signal.aborted) {
-          setLoading(false);
-        }
+      setLoading(true);
+      await fetchHobbiesList(abortController.signal);
+      if (!abortController.signal.aborted) {
+        setLoading(false);
       }
     };
 
@@ -120,8 +117,7 @@ export default function AdminHobbies() {
 
     const isDuplicate = hobbies.some(
       (hobby) => 
-        hobby.name && 
-        hobby.name.toLowerCase() === form.name.trim().toLowerCase() &&
+        (hobby.name || hobby.hobby_name || "").toLowerCase() === form.name.trim().toLowerCase() &&
         hobby.id !== editingId
     );
 
@@ -135,11 +131,10 @@ export default function AdminHobbies() {
 
     try {
       const payload = {
+        hobby_name: form.name.trim(),
         name: form.name.trim(),
-        icon: form.icon.trim(),
+        icon: form.icon.trim() || "🎯",
       };
-
-      console.log("📤 Sending payload:", payload);
 
       if (editingId) {
         await API.put(`/admin/hobbies/${editingId}`, payload);
@@ -153,12 +148,8 @@ export default function AdminHobbies() {
       setEditingId(null);
       setShowSuggestions(false);
       
-      const response = await API.get("/portfolio");
-      if (response.data.success) {
-        let hobbiesData = response.data.data?.hobbies || [];
-        hobbiesData = hobbiesData.filter(hobby => hobby && hobby.name);
-        setHobbies(hobbiesData);
-      }
+      // Reload fresh data from /admin/hobbies
+      await fetchHobbiesList();
 
       setTimeout(() => setMessage(""), 3000);
     } catch (error) {
@@ -174,8 +165,8 @@ export default function AdminHobbies() {
   const editHobby = (item) => {
     setEditingId(item.id);
     setForm({
-      name: item.name || "",
-      icon: item.icon || "",
+      name: item.hobby_name || item.name || "",
+      icon: item.icon || "🎯",
     });
     setShowSuggestions(false);
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -194,12 +185,8 @@ export default function AdminHobbies() {
       await API.delete(`/admin/hobbies/${id}`);
       setMessage("✅ Hobby deleted successfully.");
       
-      const response = await API.get("/portfolio");
-      if (response.data.success) {
-        let hobbiesData = response.data.data?.hobbies || [];
-        hobbiesData = hobbiesData.filter(hobby => hobby && hobby.name);
-        setHobbies(hobbiesData);
-      }
+      // Reload fresh data from /admin/hobbies
+      await fetchHobbiesList();
 
       setTimeout(() => setMessage(""), 3000);
     } catch (error) {

@@ -78,8 +78,8 @@ export default function Hobbies({ hobbies }) {
           {hobbiesData.map((hobby, idx) => {
             const color = getHobbyColor(idx);
             // Get icon - if hobby is an object with icon, use it, otherwise use from array
-            const icon = typeof hobby === 'object' ? hobby.icon : hobbyIcons[idx % hobbyIcons.length];
-            const name = typeof hobby === 'object' ? hobby.name : hobby;
+            const icon = typeof hobby === 'object' ? (hobby.icon || '🎯') : hobbyIcons[idx % hobbyIcons.length];
+            const name = typeof hobby === 'object' ? (hobby.hobby_name || hobby.name) : hobby;
             
             return (
               <div

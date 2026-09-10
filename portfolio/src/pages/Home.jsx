@@ -37,9 +37,20 @@ export default function Home() {
         const response = await API.get("/portfolio");
 
         if (response.data?.success) {
+          const data = response.data.data;
+          const pInfo = data.personalInfo || {};
           setPortfolioData({
             ...resumeData,
-            ...response.data.data,
+            ...data,
+            name: pInfo.name || resumeData.name,
+            role: pInfo.role || resumeData.role,
+            about: pInfo.about || resumeData.about,
+            contact: {
+              email: pInfo.email || resumeData.contact?.email,
+              linkedin: pInfo.linkedin || resumeData.contact?.linkedin,
+              location: pInfo.location || resumeData.contact?.location,
+              phone: pInfo.phone || resumeData.contact?.phone,
+            },
           });
         }
       } catch (error) {
