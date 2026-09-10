@@ -19,12 +19,17 @@ export default function AdminTheme() {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
-  const handleSelect = (themeKey) => {
+  const handleSelect = async (themeKey) => {
     setSelectedTheme(themeKey);
-    // Live preview immediately
-    changeTheme(themeKey);
-    setMessage(`👀 Previewing "${themes[themeKey]?.name}". Click "Save Global Theme" below to apply it to your live portfolio.`);
+    setMessage("");
     setError("");
+    try {
+      await saveTheme(themeKey);
+      setMessage(`🎉 Successfully updated! "${themes[themeKey]?.name}" is now the active global theme across your entire website.`);
+    } catch (err) {
+      changeTheme(themeKey);
+      setError(err?.response?.data?.message || "Failed to save theme. Please check your connection.");
+    }
   };
 
   const handleSave = async () => {
@@ -38,10 +43,10 @@ export default function AdminTheme() {
     }
   };
 
-  const handleReset = () => {
-    setSelectedTheme(currentTheme);
-    changeTheme(currentTheme);
-    setMessage(`Reset preview back to current active theme ("${themes[currentTheme]?.name}").`);
+  const handleReset = async () => {
+    setSelectedTheme("purple");
+    await saveTheme("purple");
+    setMessage(`Reset active theme back to "Royal Purple".`);
   };
 
   const activeColors = themes[selectedTheme]?.colors || themeColors;
@@ -87,6 +92,16 @@ export default function AdminTheme() {
               }}
             >
               ← Dashboard
+            </button>
+            <button
+              onClick={() => window.open("/", "_blank")}
+              className="flex items-center gap-1.5 rounded-xl border px-4 py-2.5 text-sm font-medium transition hover:bg-black/5 dark:hover:bg-white/10"
+              style={{
+                borderColor: activeColors?.border || "#e2e8f0",
+                color: activeColors?.textSecondary || "#64748b",
+              }}
+            >
+              🌐 View Live Website
             </button>
             <button
               onClick={handleSave}
@@ -364,8 +379,8 @@ export default function AdminTheme() {
                   {isCurrentActive
                     ? "✓ Currently Active"
                     : isSelected
-                    ? "✓ Selected (Click Save Above)"
-                    : "Select & Preview"}
+                    ? "✓ Applied to Website"
+                    : "Select & Apply Theme"}
                 </button>
               </div>
             );

@@ -160,6 +160,7 @@ export default function Home() {
             className="relative mx-auto min-h-[78vh] max-w-[1480px] overflow-hidden rounded-3xl"
             style={{
               backgroundColor: themeColors.primary,
+              background: themeColors.heroBg || themeColors.primary,
               boxShadow: `0 15px 45px ${themeColors.shadow}`,
             }}
           >

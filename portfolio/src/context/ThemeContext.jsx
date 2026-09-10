@@ -1,6 +1,6 @@
 // context/ThemeContext.jsx
 /* eslint-disable react-refresh/only-export-components */
-import { createContext, useContext, useState, useEffect, useCallback } from "react";
+import { createContext, useContext, useState, useEffect, useCallback, useRef } from "react";
 import API from "../services/api";
 import { themes, themeOrder } from "../themes/themes";
 
@@ -24,12 +24,26 @@ export const themeSwatches = {
   orange: "#ea580c",
 };
 
+// Cross-tab broadcast channel
+const channelName = "portfolio_global_theme_channel";
+const getChannel = () => {
+  if (typeof window !== "undefined" && "BroadcastChannel" in window) {
+    try {
+      return new BroadcastChannel(channelName);
+    } catch {
+      return null;
+    }
+  }
+  return null;
+};
+
 export const ThemeProvider = ({ children }) => {
   const [currentTheme, setCurrentTheme] = useState(() => {
-    const saved = localStorage.getItem("portfolio-theme");
+    const saved = typeof window !== "undefined" ? localStorage.getItem("portfolio-theme") : null;
     return saved && themes[saved] ? saved : "purple";
   });
   const [isSaving, setIsSaving] = useState(false);
+  const channelRef = useRef(null);
 
   // Apply CSS variables to root
   const applyThemeVariables = useCallback((themeKey) => {
@@ -48,74 +62,123 @@ export const ThemeProvider = ({ children }) => {
     });
   }, []);
 
+  // Sync state and DOM with a new theme name
+  const activateThemeLocally = useCallback((newTheme) => {
+    if (newTheme && themes[newTheme]) {
+      setCurrentTheme(newTheme);
+      localStorage.setItem("portfolio-theme", newTheme);
+      applyThemeVariables(newTheme);
+    }
+  }, [applyThemeVariables]);
+
   // Fetch initial theme from backend database on mount
   useEffect(() => {
     let isMounted = true;
+    channelRef.current = getChannel();
 
-    const fetchTheme = async () => {
+    const fetchThemeFromBackend = async () => {
       try {
         const response = await API.get("/theme");
         if (response.data && response.data.success && response.data.theme) {
-          const apiTheme = response.data.theme.toLowerCase();
+          const apiTheme = String(response.data.theme).toLowerCase();
           if (themes[apiTheme] && isMounted) {
-            setCurrentTheme(apiTheme);
-            localStorage.setItem("portfolio-theme", apiTheme);
-            applyThemeVariables(apiTheme);
+            activateThemeLocally(apiTheme);
           }
         }
       } catch (error) {
-        // Fallback gracefully to saved or default theme
-        console.warn("Could not fetch remote theme, using cached theme:", error.message);
+        console.warn("Using cached theme fallback:", error.message);
       }
     };
 
-    fetchTheme();
+    // Initial load
+    fetchThemeFromBackend();
 
-    // Cross-tab and in-app event synchronization
+    // 1. Listen for BroadcastChannel messages across tabs
+    if (channelRef.current) {
+      channelRef.current.onmessage = (event) => {
+        if (event.data?.type === "THEME_UPDATED" && event.data.theme) {
+          const incomingTheme = String(event.data.theme).toLowerCase();
+          if (themes[incomingTheme] && isMounted) {
+            activateThemeLocally(incomingTheme);
+          }
+        }
+      };
+    }
+
+    // 2. Listen for in-app CustomEvent and window Storage events
     const handleSync = (e) => {
-      const updatedTheme = e?.detail || localStorage.getItem("portfolio-theme");
-      if (updatedTheme && themes[updatedTheme]) {
-        setCurrentTheme(updatedTheme);
-        applyThemeVariables(updatedTheme);
+      const updatedTheme = e?.detail || e?.newValue || localStorage.getItem("portfolio-theme");
+      if (updatedTheme && themes[updatedTheme] && isMounted) {
+        activateThemeLocally(updatedTheme);
       }
     };
 
     window.addEventListener("portfolio-theme-updated", handleSync);
     window.addEventListener("storage", handleSync);
 
+    // 3. Re-check on tab focus / visibility change
+    const handleFocus = () => {
+      fetchThemeFromBackend();
+    };
+    window.addEventListener("focus", handleFocus);
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") {
+        fetchThemeFromBackend();
+      }
+    });
+
+    // 4. Background polling (every 3 seconds) for guaranteed cross-device/browser sync
+    const pollInterval = setInterval(() => {
+      fetchThemeFromBackend();
+    }, 3000);
+
     return () => {
       isMounted = false;
+      clearInterval(pollInterval);
       window.removeEventListener("portfolio-theme-updated", handleSync);
       window.removeEventListener("storage", handleSync);
+      window.removeEventListener("focus", handleFocus);
+      if (channelRef.current) {
+        channelRef.current.close();
+      }
     };
-  }, [applyThemeVariables]);
+  }, [activateThemeLocally]);
 
   // Update CSS variables whenever currentTheme changes
   useEffect(() => {
     applyThemeVariables(currentTheme);
   }, [currentTheme, applyThemeVariables]);
 
-  // Change theme locally (for preview) or permanently
+  // Temporary preview change
   const changeTheme = (themeName) => {
     if (themes[themeName]) {
       setCurrentTheme(themeName);
     }
   };
 
-  // Save theme permanently to database and sync
+  // Save theme permanently to database and broadcast to all tabs
   const saveTheme = async (themeName) => {
     if (!themes[themeName]) return false;
     setIsSaving(true);
     try {
       await API.put("/theme", { theme: themeName });
-      setCurrentTheme(themeName);
-      localStorage.setItem("portfolio-theme", themeName);
-      applyThemeVariables(themeName);
+      
+      // Update local state and root CSS variables immediately
+      activateThemeLocally(themeName);
 
-      // Dispatch event for other tabs/listeners
+      // 1. Broadcast to all other tabs via BroadcastChannel
+      if (channelRef.current) {
+        channelRef.current.postMessage({
+          type: "THEME_UPDATED",
+          theme: themeName,
+        });
+      }
+
+      // 2. Dispatch custom event for current window
       window.dispatchEvent(
         new CustomEvent("portfolio-theme-updated", { detail: themeName })
       );
+
       return true;
     } catch (error) {
       console.error("Failed to save theme:", error);
