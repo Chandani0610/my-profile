@@ -4,7 +4,7 @@ import { Download, Menu, X } from "lucide-react";
 import { useTheme } from "../context/ThemeContext";
 
 export default function Header() {
-  const { currentTheme } = useTheme();
+  const { currentTheme, themeColors } = useTheme();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [activeNav, setActiveNav] = useState("home");
 
@@ -85,6 +85,8 @@ export default function Header() {
     closeMenu();
   };
 
+  const primaryThemeColor = themeColors?.primary || "var(--theme-primary, #7c3aed)";
+
   return (
     <header className="sticky top-0 z-50 w-full border-b border-slate-100 bg-white/95 backdrop-blur-md transition-all duration-300">
       <nav className="mx-auto flex max-w-[1400px] items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
@@ -107,7 +109,7 @@ export default function Header() {
         </button>
 
         {/* Center Nav Links - Desktop */}
-        <ul className="hidden items-center gap-1 text-sm font-medium lg:flex">
+        <ul className="hidden items-center gap-1 text-sm lg:flex">
           {navItems.map((item) => {
             const isActive = activeNav === item.id;
             return (
@@ -117,19 +119,25 @@ export default function Header() {
                   className={`header-nav-item relative px-3.5 py-1.5 transition-all duration-200 rounded-full cursor-pointer ${
                     isActive
                       ? "header-nav-active font-bold"
-                      : "text-slate-600 hover:text-purple-600 hover:bg-slate-50"
+                      : "header-nav-inactive text-black font-semibold hover:bg-slate-100"
                   }`}
-                  style={isActive ? {
-                    color: "var(--theme-primary, #7c3aed)",
-                    backgroundColor: "var(--theme-glow-soft, rgba(124, 58, 237, 0.08))",
-                  } : {}}
+                  style={
+                    isActive
+                      ? {
+                          color: primaryThemeColor,
+                          backgroundColor: "var(--theme-glow-soft, rgba(124, 58, 237, 0.08))",
+                        }
+                      : {
+                          color: "#000000",
+                        }
+                  }
                 >
                   {item.label}
                   {isActive && (
                     <span
                       className="header-active-bar absolute bottom-0 left-2.5 right-2.5 h-[2.5px] rounded-full transition-all duration-300"
                       style={{
-                        background: "var(--theme-primary, #7c3aed)",
+                        background: primaryThemeColor,
                         boxShadow: "0 2px 8px var(--theme-glow, rgba(124, 58, 237, 0.4))",
                       }}
                     />
@@ -179,22 +187,28 @@ export default function Header() {
                 <li key={item.id}>
                   <button
                     onClick={() => scrollToSection(item.id)}
-                    className={`w-full py-2.5 px-3.5 text-left text-sm rounded-xl font-medium transition-all duration-200 flex items-center justify-between cursor-pointer ${
+                    className={`w-full py-2.5 px-3.5 text-left text-sm rounded-xl transition-all duration-200 flex items-center justify-between cursor-pointer ${
                       isActive
-                        ? "font-bold"
-                        : "text-slate-700 hover:text-purple-600 hover:bg-slate-50"
+                        ? "header-nav-active font-bold"
+                        : "header-nav-inactive text-black font-semibold hover:bg-slate-100"
                     }`}
-                    style={isActive ? {
-                      color: "var(--theme-primary, #7c3aed)",
-                      backgroundColor: "var(--theme-glow-soft, rgba(124, 58, 237, 0.1))",
-                    } : {}}
+                    style={
+                      isActive
+                        ? {
+                            color: primaryThemeColor,
+                            backgroundColor: "var(--theme-glow-soft, rgba(124, 58, 237, 0.1))",
+                          }
+                        : {
+                            color: "#000000",
+                          }
+                    }
                   >
                     <span>{item.label}</span>
                     {isActive && (
                       <span
                         className="h-2 w-2 rounded-full"
                         style={{
-                          background: "var(--theme-primary, #7c3aed)",
+                          background: primaryThemeColor,
                           boxShadow: "0 0 8px var(--theme-glow, rgba(124, 58, 237, 0.6))",
                         }}
                       />
