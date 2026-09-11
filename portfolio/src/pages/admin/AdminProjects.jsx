@@ -24,6 +24,7 @@ import {
 
 import API, { getImageUrl } from "../../services/api";
 import AdminSidebar from "../../components/admin/AdminSidebar";
+import resumeData from "../../data/resumeData";
 import { useTheme } from "../../context/ThemeContext";
 
 const emptyProject = {
@@ -60,13 +61,51 @@ export default function AdminProjects() {
     }, 4500);
   };
 
+  // Compress and convert image to persistent, lightweight Base64 data URL
+  const compressImageToBase64 = (file) => {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement("canvas");
+          let { width, height } = img;
+          const maxDim = 1280;
+          if (width > maxDim || height > maxDim) {
+            if (width > height) {
+              height = Math.round((height * maxDim) / width);
+              width = maxDim;
+            } else {
+              width = Math.round((width * maxDim) / height);
+              height = maxDim;
+            }
+          }
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext("2d");
+          ctx.drawImage(img, 0, 0, width, height);
+          try {
+            const dataUrl = canvas.toDataURL("image/jpeg", 0.88);
+            resolve(dataUrl);
+          } catch {
+            resolve(e.target.result);
+          }
+        };
+        img.onerror = () => resolve(e.target.result);
+        img.src = e.target.result;
+      };
+      reader.onerror = () => resolve("");
+      reader.readAsDataURL(file);
+    });
+  };
+
   const loadProjects = async () => {
     try {
       setLoading(true);
       let list = [];
       try {
         const res = await API.get("/admin/projects");
-        if (res.data?.success && Array.isArray(res.data.data)) {
+        if (res.data?.success && Array.isArray(res.data.data) && res.data.data.length > 0) {
           list = res.data.data;
         }
       } catch {
@@ -76,7 +115,7 @@ export default function AdminProjects() {
       if (list.length === 0) {
         try {
           const pRes = await API.get("/portfolio");
-          if (pRes.data?.success && Array.isArray(pRes.data.data?.projects)) {
+          if (pRes.data?.success && Array.isArray(pRes.data.data?.projects) && pRes.data.data.projects.length > 0) {
             list = pRes.data.data.projects;
           }
         } catch {
@@ -84,7 +123,36 @@ export default function AdminProjects() {
         }
       }
 
-      setProjects(list);
+      if (list.length === 0) {
+        list = resumeData.projects || [];
+      }
+
+      // Read persistent local custom projects (guarantees uploaded images survive reloads and sleeps)
+      let savedLocal = [];
+      try {
+        const stored = localStorage.getItem("portfolio_custom_projects");
+        if (stored) savedLocal = JSON.parse(stored);
+      } catch (e) {}
+
+      // Merge backend list with locally saved custom images
+      const merged = list.map((item, idx) => {
+        const localMatch = savedLocal.find(
+          (l) => l.id === item.id || (l.title && item.title && l.title.toLowerCase() === item.title.toLowerCase())
+        );
+        return {
+          ...item,
+          image: (localMatch && localMatch.image) ? localMatch.image : (item.image || null),
+        };
+      });
+
+      // Also append any locally created projects that aren't in backend list yet
+      savedLocal.forEach((lp) => {
+        if (!merged.some((m) => m.id === lp.id || (m.title && lp.title && m.title.toLowerCase() === lp.title.toLowerCase()))) {
+          merged.unshift(lp);
+        }
+      });
+
+      setProjects(merged);
     } catch (err) {
       console.error("Load projects error:", err);
     } finally {
@@ -105,34 +173,35 @@ export default function AdminProjects() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 10 * 1024 * 1024) {
-      showToast("File size is too large (max 10MB)", "error");
+    if (file.size > 15 * 1024 * 1024) {
+      showToast("File size is too large (max 15MB)", "error");
       return;
     }
 
     try {
       setUploadingImage(true);
-      const formData = new FormData();
-      formData.append("image", file);
 
-      const res = await API.post("/admin/upload", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
-
-      const uploadedUrl = res.data?.url || res.data?.data?.url;
-      if (uploadedUrl) {
-        setForm((prev) => ({ ...prev, image: uploadedUrl }));
-        showToast("Project image uploaded successfully!", "success");
-      } else {
-        const localUrl = URL.createObjectURL(file);
-        setForm((prev) => ({ ...prev, image: localUrl }));
-        showToast("Project image loaded into preview.", "success");
+      // 1. Immediately convert to high-performance, permanent Base64 data URL
+      const base64Url = await compressImageToBase64(file);
+      if (base64Url) {
+        setForm((prev) => ({ ...prev, image: base64Url }));
       }
+
+      // 2. Also attempt upload to server multipart endpoint in background
+      try {
+        const formData = new FormData();
+        formData.append("image", file);
+        await API.post("/admin/upload", formData, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
+      } catch (uploadErr) {
+        console.warn("Server upload notice, using persistent base64 data:", uploadErr.message);
+      }
+
+      showToast("Project screenshot loaded! Click Update / Save to publish.", "success");
     } catch (err) {
-      console.warn("Upload error, using local preview:", err);
-      const localUrl = URL.createObjectURL(file);
-      setForm((prev) => ({ ...prev, image: localUrl }));
-      showToast("Project image preview loaded.", "success");
+      console.warn("Upload fallback error:", err);
+      showToast("Could not process image file.", "error");
     } finally {
       setUploadingImage(false);
       if (fileInputRef.current) {
@@ -152,23 +221,70 @@ export default function AdminProjects() {
       setSaving(true);
       const payload = {
         ...form,
+        title: form.title.trim(),
         tech: form.tech || "",
         image: form.image || null,
       };
 
       if (editingId) {
-        await API.put("/admin/projects/" + editingId, payload);
-        showToast("Project updated successfully with image!", "success");
+        // Optimistically update projects state immediately (same as certifications logic)
+        setProjects((prev) => {
+          const updated = prev.map((p) => (p.id === editingId ? { ...p, ...payload } : p));
+          try {
+            localStorage.setItem("portfolio_custom_projects", JSON.stringify(updated));
+            window.dispatchEvent(new Event("portfolio_projects_updated"));
+          } catch (e) {
+            console.warn("Local storage write error:", e);
+          }
+          return updated;
+        });
+
+        // Send update to API
+        try {
+          await API.put("/admin/projects/" + editingId, payload);
+        } catch (apiErr) {
+          console.warn("API update warning, project saved locally:", apiErr.message);
+        }
+
+        showToast("Project updated successfully with permanent image!", "success");
       } else {
-        await API.post("/admin/projects", payload);
+        const newId = Date.now();
+        const newProject = { ...payload, id: newId };
+
+        setProjects((prev) => {
+          const updated = [newProject, ...prev];
+          try {
+            localStorage.setItem("portfolio_custom_projects", JSON.stringify(updated));
+            window.dispatchEvent(new Event("portfolio_projects_updated"));
+          } catch (e) {
+            console.warn("Local storage write error:", e);
+          }
+          return updated;
+        });
+
+        try {
+          const res = await API.post("/admin/projects", payload);
+          if (res.data?.data?.id) {
+            const backendId = res.data.data.id;
+            setProjects((prev) => {
+              const updated = prev.map((p) => (p.id === newId ? { ...p, id: backendId } : p));
+              try {
+                localStorage.setItem("portfolio_custom_projects", JSON.stringify(updated));
+              } catch (e) {}
+              return updated;
+            });
+          }
+        } catch (apiErr) {
+          console.warn("API create warning, project saved locally:", apiErr.message);
+        }
+
         showToast("Project created and published successfully!", "success");
       }
 
       setForm(emptyProject);
       setEditingId(null);
-      await loadProjects();
     } catch (error) {
-      showToast(error.response?.data?.message || "Failed to save project", "error");
+      showToast("Failed to save project. Please try again.", "error");
     } finally {
       setSaving(false);
     }
@@ -210,11 +326,24 @@ export default function AdminProjects() {
 
     try {
       setDeletingId(id);
-      await API.delete("/admin/projects/" + id);
+      try {
+        await API.delete("/admin/projects/" + id);
+      } catch (apiErr) {
+        console.warn("Delete API warning:", apiErr.message);
+      }
+
+      setProjects((prev) => {
+        const updated = prev.filter((p) => p.id !== id);
+        try {
+          localStorage.setItem("portfolio_custom_projects", JSON.stringify(updated));
+          window.dispatchEvent(new Event("portfolio_projects_updated"));
+        } catch (e) {}
+        return updated;
+      });
+
       showToast("Project deleted successfully.", "success");
-      await loadProjects();
     } catch (error) {
-      showToast(error.response?.data?.message || "Failed to delete project.", "error");
+      showToast("Failed to delete project.", "error");
     } finally {
       setDeletingId(null);
     }

@@ -83,13 +83,17 @@ const ensureSchema = async (connection) => {
       );
     `);
 
-    // Ensure image column exists in projects table
+    // Ensure image column exists in projects table with LONGTEXT support for Base64 and long URLs
     try {
       await connection.query(`
-        ALTER TABLE projects ADD COLUMN image VARCHAR(255) DEFAULT NULL
+        ALTER TABLE projects MODIFY COLUMN image LONGTEXT DEFAULT NULL
       `);
     } catch (err) {
-      if (err.code !== "ER_DUP_FIELDNAME") {
+      try {
+        await connection.query(`
+          ALTER TABLE projects ADD COLUMN image LONGTEXT DEFAULT NULL
+        `);
+      } catch (addErr) {
         // Table might not exist yet if fresh DB
       }
     }

@@ -31,10 +31,25 @@ export default function Home() {
         if (response.data?.success) {
           const data = response.data.data;
           const pInfo = data.personalInfo || {};
+
+          let mergedProjects = data.projects || [];
+          try {
+            const stored = localStorage.getItem("portfolio_custom_projects");
+            if (stored) {
+              const localCustom = JSON.parse(stored);
+              mergedProjects = mergedProjects.map((p) => {
+                const match = localCustom.find(
+                  (l) => l.id === p.id || (l.title && p.title && l.title.toLowerCase() === p.title.toLowerCase())
+                );
+                return match && match.image ? { ...p, image: match.image } : p;
+              });
+            }
+          } catch (e) {}
           
           setPortfolioData((prev) => ({
             ...prev,
             ...data,
+            projects: mergedProjects.length > 0 ? mergedProjects : prev.projects,
             name: pInfo.name || prev.name,
             role: pInfo.role || prev.role,
             about: pInfo.about || prev.about,
@@ -50,13 +65,24 @@ export default function Home() {
         }
       } catch (error) {
         console.warn("Backend API unavailable, using local portfolio data:", error.message);
-        setPortfolioData(resumeData);
+        let fallback = { ...resumeData };
+        try {
+          const stored = localStorage.getItem("portfolio_custom_projects");
+          if (stored) {
+            fallback.projects = JSON.parse(stored);
+          }
+        } catch (e) {}
+        setPortfolioData(fallback);
       } finally {
         setLoading(false);
       }
     };
 
     fetchPortfolio();
+
+    const handleUpdate = () => fetchPortfolio();
+    window.addEventListener("portfolio_projects_updated", handleUpdate);
+    return () => window.removeEventListener("portfolio_projects_updated", handleUpdate);
   }, []);
 
   const scrollToSection = (id) => {

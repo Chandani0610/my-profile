@@ -1,10 +1,38 @@
 // components/Projects.jsx
+import { useState, useEffect, useMemo } from "react";
 import { ArrowRight, ExternalLink } from "lucide-react";
 import { getImageUrl } from "../services/api";
 import vedantDevotionsImg from "../assets/vedant-devotions.png";
 import kahanilandMobileImg from "../assets/kahaniland-mobile.jpg";
 
-export default function Projects({ projects }) {
+export default function Projects({ projects: initialProjects }) {
+  const [localProjects, setLocalProjects] = useState(() => {
+    try {
+      const stored = localStorage.getItem("portfolio_custom_projects");
+      return stored ? JSON.parse(stored) : null;
+    } catch {
+      return null;
+    }
+  });
+
+  useEffect(() => {
+    const handleUpdate = () => {
+      try {
+        const stored = localStorage.getItem("portfolio_custom_projects");
+        if (stored) {
+          setLocalProjects(JSON.parse(stored));
+        }
+      } catch (e) {}
+    };
+
+    window.addEventListener("portfolio_projects_updated", handleUpdate);
+    window.addEventListener("storage", handleUpdate);
+    return () => {
+      window.removeEventListener("portfolio_projects_updated", handleUpdate);
+      window.removeEventListener("storage", handleUpdate);
+    };
+  }, []);
+
   const defaultProjects = [
     {
       id: 1,
@@ -38,47 +66,62 @@ export default function Projects({ projects }) {
     },
   ];
 
-  // Merge projects from props or database with fallbacks
-  const rawList = (projects && projects.length > 0) ? projects : defaultProjects;
+  // Merge projects from props or database with persistent local custom projects
+  const projectList = useMemo(() => {
+    const baseList = (initialProjects && initialProjects.length > 0)
+      ? initialProjects
+      : (localProjects && localProjects.length > 0)
+        ? localProjects
+        : defaultProjects;
 
-  const projectList = rawList.map((p, idx) => {
-    const title = p.title || "Featured Project";
-    const lower = title.toLowerCase();
+    return baseList.map((p, idx) => {
+      const title = p.title || "Featured Project";
+      const lower = title.toLowerCase();
 
-    let fallbackType = "generic";
-    let fallbackImg = null;
+      // Check if local storage has an updated image or data for this project
+      const localMatch = localProjects?.find(
+        (lp) => lp.id === p.id || (lp.title && lp.title.toLowerCase() === lower)
+      );
 
-    if (lower.includes("vedant")) {
-      fallbackType = "vedant";
-      fallbackImg = vedantDevotionsImg;
-    } else if (lower.includes("mobile") || lower.includes("kahani")) {
-      fallbackType = "mobile";
-      fallbackImg = kahanilandMobileImg;
-    } else if (lower.includes("fee")) {
-      fallbackType = "fee";
-    }
+      const resolvedImage = (localMatch && localMatch.image) ? localMatch.image : p.image;
 
-    const techList = Array.isArray(p.tech)
-      ? p.tech
-      : (p.tech || p.technologies || "")
-          .split("+")
-          .join(",")
-          .split(",")
-          .map((t) => t.trim())
-          .filter(Boolean);
+      let fallbackType = "generic";
+      let fallbackImg = null;
 
-    return {
-      id: p.id || idx + 1,
-      title,
-      description: p.description || "",
-      tech: techList.length > 0 ? techList : ["React.js", "Tailwind CSS", "MySQL"],
-      demo: p.demo || "#",
-      github: p.github || "https://github.com/Chandani0610",
-      image: p.image || fallbackImg,
-      type: p.image ? "custom-image" : fallbackType,
-      icon: p.icon || "💻",
-    };
-  });
+      if (lower.includes("vedant")) {
+        fallbackType = "vedant";
+        fallbackImg = vedantDevotionsImg;
+      } else if (lower.includes("mobile") || lower.includes("kahani")) {
+        fallbackType = "mobile";
+        fallbackImg = kahanilandMobileImg;
+      } else if (lower.includes("fee")) {
+        fallbackType = "fee";
+      }
+
+      const finalImg = resolvedImage || fallbackImg;
+
+      const techList = Array.isArray(p.tech)
+        ? p.tech
+        : (p.tech || p.technologies || "")
+            .split("+")
+            .join(",")
+            .split(",")
+            .map((t) => t.trim())
+            .filter(Boolean);
+
+      return {
+        id: p.id || idx + 1,
+        title,
+        description: localMatch?.description || p.description || "",
+        tech: techList.length > 0 ? techList : ["React.js", "Tailwind CSS", "MySQL"],
+        demo: localMatch?.demo || p.demo || "#",
+        github: localMatch?.github || p.github || "https://github.com/Chandani0610",
+        image: finalImg,
+        type: finalImg ? "custom-image" : fallbackType,
+        icon: p.icon || "💻",
+      };
+    });
+  }, [initialProjects, localProjects]);
 
   return (
     <section id="other-projects" className="relative w-full px-4 py-8 sm:px-6 lg:px-8">
@@ -122,7 +165,7 @@ export default function Projects({ projects }) {
                     alt={project.title}
                     className="h-full w-full object-cover object-top transition duration-500 group-hover:scale-105"
                     onError={(e) => {
-                      if (!project.image.startsWith("http") && !project.image.startsWith("/")) {
+                      if (!project.image.startsWith("http") && !project.image.startsWith("data:") && !project.image.startsWith("/")) {
                         e.target.src = "/" + project.image;
                       }
                     }}

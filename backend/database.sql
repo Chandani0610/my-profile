@@ -59,6 +59,7 @@ CREATE TABLE IF NOT EXISTS projects (
     description TEXT,
     github VARCHAR(255),
     demo VARCHAR(255),
+    image LONGTEXT DEFAULT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
