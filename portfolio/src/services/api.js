@@ -6,13 +6,23 @@ const isLocalhost =
   (window.location.hostname === "localhost" ||
     window.location.hostname === "127.0.0.1");
 
-export const API_BASE_URL = isLocalhost
-  ? "http://localhost:5000/api"
-  : import.meta.env.VITE_API_BASE_URL || "https://my-profile-p7ic.onrender.com/api";
+// Support all standard environment variable names: VITE_API_URL, VITE_API_BASE_URL, VITE_BACKEND_URL
+const rawEnvUrl =
+  import.meta.env.VITE_API_URL ||
+  import.meta.env.VITE_API_BASE_URL ||
+  import.meta.env.VITE_BACKEND_URL;
+
+// Normalize root backend URL (removes trailing slash and /api suffix if present)
+const normalizeBackendUrl = (url) => {
+  if (!url) return "";
+  return url.trim().replace(/\/+$/, "").replace(/\/api$/, "");
+};
 
 export const BACKEND_URL = isLocalhost
-  ? "http://localhost:5000"
-  : import.meta.env.VITE_BACKEND_URL || API_BASE_URL.replace(/\/api\/?$/, "");
+  ? (import.meta.env.VITE_BACKEND_URL || (import.meta.env.VITE_API_URL && !import.meta.env.VITE_API_URL.includes("localhost") ? normalizeBackendUrl(import.meta.env.VITE_API_URL) : "http://localhost:5000"))
+  : (rawEnvUrl ? normalizeBackendUrl(rawEnvUrl) : "https://my-profile-p7ic.onrender.com");
+
+export const API_BASE_URL = `${BACKEND_URL}/api`;
 
 export const getImageUrl = (imagePath) => {
   if (!imagePath) return "";

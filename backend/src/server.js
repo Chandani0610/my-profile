@@ -40,6 +40,8 @@ app.use(
 // =====================================================
 
 const allowedOrigins = [
+  "https://my-profile-chandani20.vercel.app",
+  process.env.CLIENT_URL,
   "http://localhost:5173",
   "http://localhost:5174",
   "http://localhost:5175",
@@ -48,7 +50,7 @@ const allowedOrigins = [
   "http://127.0.0.1:5174",
   "http://127.0.0.1:5175",
   "http://127.0.0.1:3000",
-];
+].filter(Boolean);
 
 app.use(
   cors({

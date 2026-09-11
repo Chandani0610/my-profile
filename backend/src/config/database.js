@@ -124,9 +124,14 @@ const testConnection = async () => {
       console.warn("👉 Diagnosis: Hostname cannot be resolved (DNS name does not exist).");
       console.warn("   Your Aiven cloud service may be paused, powered off, or expired in the Aiven Console (https://console.aiven.io).");
     }
-    console.warn("=================================");
+    // In production (Render), strictly enforce Aiven MySQL (do NOT attempt localhost)
+    if (process.env.NODE_ENV === "production") {
+      console.error("❌ Production Database Error: Unable to connect to primary Aiven MySQL.");
+      console.error("👉 Please ensure your Aiven service is active, running, and Render environment variables (DB_HOST, DB_USER, DB_PASSWORD, DB_NAME, DB_PORT, DB_SSL) match your Aiven console.");
+      throw primaryError;
+    }
 
-    // Attempt automatic fallback to local database
+    // Attempt automatic fallback to local database (local development only)
     const localHost = process.env.LOCAL_DB_HOST || "localhost";
     console.log(`🔄 Attempting automatic fallback to Local MySQL (${localHost})...`);
 
