@@ -262,6 +262,19 @@ app.use("/api/theme", themeRoutes);
 app.use("/api/admin/theme", themeRoutes);
 
 // =====================================================
+// ADMIN BROWSER REDIRECT
+// =====================================================
+// If user visits /admin or /admin/dashboard directly on the backend URL,
+// seamlessly redirect them to the deployed Vercel frontend admin portal.
+app.use((req, res, next) => {
+  if (req.path === "/admin" || req.path.startsWith("/admin/")) {
+    const clientUrl = process.env.CLIENT_URL || "https://my-profile-chandani20.vercel.app";
+    return res.redirect(302, `${clientUrl.replace(/\/+$/, "")}${req.originalUrl}`);
+  }
+  next();
+});
+
+// =====================================================
 // 404 ROUTE
 // =====================================================
 

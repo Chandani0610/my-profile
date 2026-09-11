@@ -89,7 +89,20 @@ const {
 // Register Admin
 router.post("/register", registerAdmin);
 
-// Login Admin
+// Login Admin (POST for authentication, GET provides guidance or browser redirect)
+router.get("/login", (req, res) => {
+  const clientUrl = process.env.CLIENT_URL || "https://my-profile-chandani20.vercel.app";
+  if (req.accepts("html") && !req.xhr && !req.headers["accept"]?.includes("application/json")) {
+    return res.redirect(302, `${clientUrl.replace(/\/+$/, "")}/admin`);
+  }
+  return res.status(405).json({
+    success: false,
+    message: "HTTP GET is not supported on /api/admin/login. Please send an HTTP POST request with JSON body { email, password }, or visit the admin login page in your browser.",
+    loginPage: `${clientUrl.replace(/\/+$/, "")}/admin`,
+    method: "POST",
+  });
+});
+
 router.post("/login", loginAdmin);
 
 // Logout Admin
